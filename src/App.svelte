@@ -1,6 +1,6 @@
 <script>
 
-    const VERSION = "0.1.0"
+    const VERSION = "0.2.0"
 
     if (localStorage.getItem("version") != VERSION) {
         localStorage.clear()
@@ -317,7 +317,7 @@
     let active = { rhythm_id: 0, episode_id: 0, pos: 0, phase: 0 }
     let started = { ts: 0, episode_id: 0, pos: 0, phase: 0 }
     let selected_episodes = new Set()
-    let bpm = 120
+    let bpm = 90
 
     function store_active(active) {
         const stored = { rhythm_name: rhythms[active.rhythm_id].name, episode_id: active.episode_id }
