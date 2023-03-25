@@ -28,19 +28,14 @@
         align-items: center;
         padding: 2px;
         margin: 2px;
-        background: #eee;
+        color: var(--theme-fg);
     }
-    .block {
-        display: block;
-        width: 24px;
-        height: 4px;
-        background: grey;
-    }
-    .active .block {
-        background: green;
+    .active.item {
+        background: var(--theme-fg);
+        color: var(--theme-bg);
     }
     label {
-        font: 10px "Good Times", sans-serif;
+        font: 12px "Good Times", sans-serif;
     }
 </style>
 
@@ -48,7 +43,6 @@
     {#each values as v, value_id}
     <button class="item" class:active={v == value} on:click={() => { value=v; dispatch("change") }}>
         <label>{v}</label>
-        <div class="block"/>
     </button>
     {/each}
 </div>

@@ -5,9 +5,9 @@
     export let playing = false
 </script>
 <svg height="40px" viewBox="-0.5 -0.5 1 1">
-    <g class:playing={playing != 0} transform="scale(2.2)"
+    <g class:playing={playing != 0} transform="scale(1.2)"
         on:click={() => dispatch("toggle")}>
-        <circle r=0.2 fill="none" pointer-events="fill"/>
+        <circle r=0.3 fill="none" pointer-events="fill"/>
         <polygon class='triag' points="-0.17,-0.3 0.33,0 -0.17,0.3 "/>
         <polygon class='quad' points="-0.25,-0.25 0.25,-0.25 0.25,0.25 -0.25,0.25 "/>
     </g>
@@ -19,10 +19,10 @@
     .triag, .quad {
       transition: all 0.4s ease-in-out;
       transform: translateY(0);
-      stroke-width: 0.06px;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      stroke: var(--theme-accent);
+      stroke-width: 0.08px;
+      stroke-linecap: butt;
+      stroke-linejoin: miter;
+      stroke: var(--theme-fg);
       fill: none;
     }
     .triag {
@@ -41,7 +41,7 @@
       stroke-dashoffset: 0.0;
     }
     .playing .triag, .playing .quad {
-      stroke: var(--theme-fg-alt);
+      stroke: var(--theme-fg);
       animation: nudge 0.4s ease-in-out;
     }
     @keyframes nudge {

@@ -354,7 +354,8 @@
         let { episode_id, pos, phase } = started
         if (started.ts && rhythm.episodes.some(episode => episode.can_play)) {
             window.requestAnimationFrame(process)
-            const elapsed = (now - started.ts) * bpm * rhythm.period / 240 / 1000
+            const beat_period = {9: 3, 12: 3, 16: 4, 18: 3}[rhythm.period] || 4
+            const elapsed = (now - started.ts) * (bpm / 60) * beat_period * 0.001
             pos += elapsed
             phase += elapsed
             while (!rhythm.episodes[episode_id].can_play || phase >= rhythm.episode_duration(episode_id)) {
@@ -578,6 +579,11 @@ article {
             on:press={(e) => dot_toggle(e, active.episode_id)} 
             on:swipeend={on_cirle_swipeend}
             on:swipe={on_cirle_swipe}/>
+        {#if article_id == 0}
+        <div class="centered" style="position: absolute; width: 100%; bottom: 0">
+            <BpmSelect bind:value={bpm} on:change={() => flush_started(false)}/>
+        </div>
+        {/if}
     </article>
     {/each}
 
