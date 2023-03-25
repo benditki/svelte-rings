@@ -30,19 +30,19 @@
     flex-direction: column-reverse;
 }
 .stripe {
-    background: #5b5ec7;
+    background: var(--theme-fg);
     height: var(--stripe-height);
     margin-top: var(--gap);
 }
 .dim {
-    background: #a0a1b7;
+    background: var(--theme-bg-alt);
 }
 label {
     font: 32px "Good Times", sans-serif;
     display: inline-block;
     width: 60px;
     text-align: center;
-    color: #5b5ec7;
+    color: var(--theme-fg);
 }
 
 </style>

@@ -20,9 +20,6 @@
 
 <style>
 header {
-    background: #e7ecef;
-    border-bottom: 1px solid #c2d0d8;
-    box-shadow: 2px 2px 5px 1px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
 }
@@ -35,13 +32,14 @@ button {
     padding: 0;
     background: none;
     border: none;
-    width: 64px;
 }
 
-h1 {
-    margin: 4px 0 8px;
-    flex-grow: 1;
-    text-align: center;
+.name {
+    color: var(--theme-fg);
+    font-weight: bold;
+    font-size: 130%;
+    background-color: var(--theme-mid);
+    padding: 3pt 8pt;
 }
 .menu {
     position: fixed;
@@ -50,7 +48,10 @@ h1 {
     left: 0;
     bottom: 0;
     right: 0;
-    background: white;
+    background: var(--theme-bg);
+    margin: 8px 4px;
+    padding: 8px;
+    border: 3px solid var(--theme-fg);
 }
 .list {
     margin-top: 12px;
@@ -75,18 +76,22 @@ input[type=text] {
 }
 i {
     font-size: 36px;
-    color: #4691f6;
+    color: var(--theme-fg);
 }
 button:disabled i {
-    color: #aaa;
+    color: var(--theme-bg-alt);
 }
 
 i:before {
     line-height: 62px;
 }
 
+.list i:before {
+    line-height: 32px;
+}
+
 span.round {
-    background-color: #fe4365;
+    background-color: var(--theme-fg);
     display: inline-block;
     width: 64px;
     height: 64px;
@@ -95,7 +100,7 @@ span.round {
     line-height: 36px;
 }
 .round i {
-    color: white;
+    color: var(--theme-bg);
     margin: 0;
 }
 h1 + i, h1 + i:before {
@@ -114,24 +119,24 @@ h1 + i, h1 + i:before {
     line-height: 24px;
 }
 .icon-plus.outline:before {
-    -webkit-text-stroke: 7px #e7ecef;
+    -webkit-text-stroke: 7px var(--theme-bg);
     color: red;
 }
 .icon-lock {
-    color: #b9b5d4;
+    color: var(--theme-mid);
 }
 .list .icon-lock {
-    color: #d0cfd8;
+    color: var(--theme-bg-alt);
 }
 .new {
     position: relative;
-    border: 2px solid #4691f6;
+    border: 2px solid var(--theme-fg);
     border-radius: 6px;
     padding: 4px 8px 12px 0px;
     width: 48px;
 }
 .new span {
-    color: #4691f6;
+    color: var(--theme-fg);
     font-size: 36px;
     line-height: 24px;
     font-weight: bold;
@@ -202,5 +207,5 @@ h1 + i, h1 + i:before {
 </div>
 {/if}
 <header on:click={() => open = true}>
-    <h1>{rhythms[active].name}</h1>
+    <span class="name">{rhythms[active].name}</span>
 </header>

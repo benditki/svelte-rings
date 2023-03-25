@@ -6,11 +6,13 @@ export default class Instrument {
         this.sounds = {}
         this.sym_map = {}
         this.sym_list = []
-        for (const entry of sounds) {
-            const sound_info = { letter: 'x', sym: symbols.DOT, ...entry }
-            this.sym_list.push(sound_info.sym)
-            this.sym_map[sound_info.letter] = sound_info.sym
-            this.sounds[sound_info.sym] = sound_info.sound
+        this.sym_level = {}
+        for (const [level, entry] of sounds.entries()) {
+            const {sym, letter, sound} = { letter: 'x', sym: symbols.DOT, ...entry }
+            this.sym_list.push(sym)
+            this.sym_map[letter] = sym
+            this.sounds[sym] = sound
+            this.sym_level[sym] = level
         }
     }
 

@@ -4,6 +4,7 @@ import Dot from "./dot.svelte"
 import { createEventDispatcher } from 'svelte'
 const dispatch = createEventDispatcher()
 
+export let instrument_order
 export let instruments
 export let episode
 export let blocked
@@ -14,18 +15,20 @@ let selected = null
 const period = 6
 
 const center_dot = { radius: 0, size: 0.2, width: 0.45 }
+const border_dot = { radius: 0.37, width: 0.15, delta: 1/2 }
 const other_dot = { radius: 0.37, size: 0.12, width: 0.25, delta: 1/period }
 
 function phase(instrument, sym_id) {
     return (sym_id - (instrument.sym_list.length - 2)/2)/period
 }
 
-function on_touch(instrument) {
-    instrument.play()
-}
-
-function on_other_click(instrument, sym, instrument_id) {
-    dispatch("switch", { sym, id: instrument_id })
+function on_touch(presented) {
+    const {instrument, index} = presented
+    if (index == -1) {
+        dispatch("add", {instrument})
+    } else {
+        dispatch("switch", {instrument})
+    }
     instrument.play()
 }
 
@@ -63,38 +66,38 @@ function on_press(instrument) {
     closed = true
 }
 
+function presented_instruments(instruments, episode, instrument_order) {
+    return Object.values(instruments).map(instrument => ({
+        instrument, 
+        index: episode.phrases.findIndex(phrase => phrase.instrument == instrument),
+        order: instrument_order.get(instrument)
+    }))
+}
+
 </script>
 
-<div class="row bar">
-    <div class="row instruments">
-        {#each episode.phrases as phrase, phrase_id}
-        <div class="col work" class:selected={phrase.instrument==selected}>
+<div class="row container">
+    <div class="col instruments">
+        {#each presented_instruments(instruments, episode, instrument_order) as presented}
+        <div class="col work" class:selected={presented.instrument==selected} style={`order: ${Math.floor(presented.order*100)}`}>
             <div class="card">
-            <svg viewBox="-0.5 -0.5 1.0 {phrase.instrument==selected?1.25:0.9}">
+            <svg viewBox="{presented.index != -1 ? -0.3 : 0.1} -0.5 1.0 1.0">
                 <g transform="rotate(-90)">
-                <Dot {...center_dot} color={phrase.instrument.color} sym={phrase.instrument.sym_list[0]}
-                    on:touch={() => on_touch(phrase.instrument)}/>
-                {#each phrase.instrument.sym_list.slice(1) as sym, sym_id}
-                <Dot {...other_dot} color={phrase.instrument.color} {sym} phase={phase(phrase.instrument, sym_id)}
-                    on:touch={() => on_other_click(phrase.instrument, sym, phrase_id)}/>
-                {/each}
-                {#if phrase.instrument==selected}
-                <Dot on:touch={() => dispatch("extra", { phrase_id })} phase={0.5} radius={0.5} width={0.25} delta={0.25} gap={0.05} color={phrase.parts.length > 1 ? phrase.instrument.color : "grey"}/>
-                {:else}
-                {#if phrase.parts.length > 1}
-                <Dot phase={0.5} radius={0.31} width={0.1} delta={0.5} gap={0.05} color={phrase.instrument.color}/>
-                {/if}
+                <Dot {...center_dot} size={presented.index != -1 ? 0.4 : 0.3} width={presented.index != -1 ? 0.87 : 0.58} color={presented.instrument.color} sym={presented.instrument.sym_list[0]}
+                    on:touch={() => on_touch(presented)}/>
+                {#if presented.index == -1}
+                <Dot {...border_dot} color="var(--theme-fg)" phase={presented.index != -1 ? 0.75 : 0.25} />
                 {/if}
                 </g>
             </svg>
             </div>
-            <div class="centered caption"
+            <!-- <div class="centered caption"
                 on:click={() => on_press(phrase.instrument)}>
-                <label>{phrase.instrument.name}</label></div>
+                <label>{phrase.instrument.name}</label></div> -->
         </div>
         {/each}
     </div>
-    <div class="row end">
+    <!-- <div class="row end">
         {#if blocked}
         <i class="icon-lock"></i>
         {:else}
@@ -121,22 +124,29 @@ function on_press(instrument) {
             {/each}
         </nav>
         {/if}
-    </div>
+    </div> -->
 </div>
 
 <style>
 :root {
-   --s: 70px;
+   --s: 32px;
 }
 
+.container {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
 .instruments {
-    flex-basis: 350px;
-    min-width: 200px;
+    justify-content: space-evenly
+    /* flex-basis: 350px;
+    min-width: 200px; */
 }
 
 .instruments > * {
-    flex-basis: 64px;
-    min-width: 10px;
+    /* flex-basis: 64px;
+    min-width: 10px; */
 }
 
 .caption {
@@ -296,7 +306,7 @@ nav.closed .item {
 
 .icon-lock {
     font-size: 48px;
-    color: #b9b5d4;
+    color: var(--theme-bg-alt);
 }
 
 

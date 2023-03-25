@@ -2,7 +2,10 @@
     import { longpress } from './longpress.js'
     import * as symbols from "./symbols"
 
+    export let back = true
+    export let circular = true
     export let radius = 1.0
+    export let dot_shift = 0
     export let width = 0.15
     export let size = 0.4 * width
     export let phase = 0.0
@@ -10,11 +13,19 @@
     export let gap = 0.01
     export let sym = null
     export let color = "grey"
-    export let pulse_color = "#222"
-    export let outline_color = "white"
+    export let pulse_color = "var(--theme-fg)"
+    export let outline_color = "var(--theme-bg-more)"
+    export let flash_color = undefined
 
-    function trans(phase) {
-        return `rotate(${360 * phase})`
+    export let next_phase = undefined
+    export let next_dot_shift = 0
+
+    function trans(circular, phase) {
+        return circular ? `rotate(${360 * phase})` : `translate(${phase})`
+    }
+
+    function sym_trans(circular, radius, dot_shift) {
+        return circular ? `translate(${radius + dot_shift})` : `translate(0, ${radius - dot_shift}) rotate(270)`
     }
 
     function cont(radius, width, delta, gap) {
@@ -37,28 +48,29 @@
             ` L ${x1} ${-y1} A ${r1} ${r1} 0 0 1 ${x1} ${y1}`
     }
 
-    function shape(sym, size, radius) {
+    function shape(sym, size) {
         const s2 = size / 2
         if (sym == symbols.QUAD) {
-            return `M ${radius - s2} ${s2}` +
-                  ` L ${radius - s2} ${-s2}` +
-                  ` L ${radius + s2} ${-s2}` +
-                  ` L ${radius + s2} ${s2} Z`
+            return `M ${- s2} ${+ s2}` +
+                  ` L ${- s2} ${- s2}` +
+                  ` L ${+ s2} ${- s2}` +
+                  ` L ${+ s2} ${+ s2} Z`
 
         } else if (sym == symbols.TRIAG) {
-            return `M ${radius - s2} ${s2}` +
-                  ` L ${radius - s2} ${-s2}` +
-                  ` L ${radius + s2} 0 Z`
+            return `M ${- s2} ${+ s2}` +
+                  ` L ${- s2} ${- s2}` +
+                  ` L ${+ s2} 0 Z`
 
         } else if (sym == symbols.DOT) {
-            return `M ${radius - s2} 0` +
-                  ` A ${s2} ${s2} 0 1 1 ${radius + s2} 0` +
-                  ` A ${s2} ${s2} 0 1 1 ${radius - s2} 0`
+            return `M ${- s2} 0` +
+                  ` A ${+ s2} ${+ s2} 0 1 1 ${+ s2} 0` +
+                  ` A ${+ s2} ${+ s2} 0 1 1 ${- s2} 0`
+
         } else if (sym == symbols.TRAPEZ) {
-            return `M ${radius - s2 * 1.1} ${s2/2}` +
-                  ` L ${radius - s2 * 1.1} ${-s2/2}` +
-                  ` L ${radius + s2 * 0.9} ${-s2 * 1.2}` +
-                  ` L ${radius + s2 * 0.9} ${s2 * 1.2} Z`
+            return `M ${- s2 * 1.1} ${+ s2 * 0.5}` +
+                  ` L ${- s2 * 1.1} ${- s2 * 0.5}` +
+                  ` L ${+ s2 * 0.9} ${- s2 * 1.2}` +
+                  ` L ${+ s2 * 0.9} ${+ s2 * 1.2} Z`
         }
     }
 
@@ -67,11 +79,53 @@
     }
 </script>
 
-<g transform="{trans(phase)}" use:longpress on:press on:touch on:swipe on:swipeend>
-    <path  fill={color} d="{cont(radius, width, delta, gap)}"/>
+<g transform="{trans(circular, phase)}">
+    {#if back}
+        {#if circular}
+        <path fill={color} d="{cont(radius, width, delta, gap)}"/>
+        {:else}
+        <rect x={-delta/2 + gap/2} y={radius-width/2} height={width} width={delta - gap} fill={color}
+            use:longpress on:press on:touch on:swipe on:swipeend/>
+        {/if}
+    {/if}
+
     {#if sym}
-    <path fill={pulse_color} d={shape(sym, size, radius)}
-        stroke={outline_color} stroke-width={stroke_width()}/>
+        <g transform={sym_trans(circular, radius, dot_shift)}>
+        <path fill={pulse_color} d={shape(sym, size)}
+            stroke={outline_color} stroke-width={stroke_width()} data-debug={JSON.stringify({flash_color})}/>
+        {#if flash_color}
+        <path fill="none" d={shape(sym, size * 0.55)}
+            stroke={flash_color} stroke-width={stroke_width()}/>
+        {/if}
+        </g>
+    {/if}
+
+    {#if next_phase !== undefined}
+        {#if circular}
+        <line y2={radius * Math.sin(2 * Math.PI * (next_phase - phase))}
+                x1={dot_shift + radius}
+                x2={next_dot_shift + radius * Math.cos(2 * Math.PI * (next_phase - phase))}
+                stroke={outline_color} stroke-width=0.015
+                data-debug={`next_phase=${next_phase}, phase=${phase}`}/>
+        <line y2={radius * Math.sin(2 * Math.PI * (next_phase - phase))}
+                x1={dot_shift + radius}
+                x2={next_dot_shift + radius * Math.cos(2 * Math.PI * (next_phase - phase))}
+                stroke={pulse_color} stroke-width=0.008
+                data-debug={`next_phase=${next_phase}, phase=${phase}`}/>
+        {:else}
+            {#if next_phase > phase}
+            <line transform={`translate(0, ${radius})`} x2={next_phase - phase}
+                    y1={-dot_shift}
+                    y2={-next_dot_shift}
+                    stroke={outline_color} stroke-width=0.01
+                    data-debug={`next_phase=${next_phase}, phase=${phase}`}/>
+            <line transform={`translate(0, ${radius})`} x2={next_phase - phase}
+                    y1={-dot_shift}
+                    y2={-next_dot_shift}
+                    stroke={pulse_color} stroke-width=0.005
+                    data-debug={`next_phase=${next_phase}, phase=${phase}`}/>
+            {/if}
+        {/if}
     {/if}
 </g>
 

@@ -2,6 +2,8 @@
     import { longpress } from './longpress.js'
     import { adjust, emphasize} from "./colors.js"
     import { createEventDispatcher } from 'svelte'
+    import ProgressCircle from "./progress_circle.svelte";
+
 	const dispatch = createEventDispatcher()
 
     export let episodes
@@ -29,7 +31,7 @@
         selected = selected.add(episode_id)
     }
 
-    const button_size = 64;
+    const button_size = 32;
 
     function radius_delta(phrases) {
         return button_size * 0.25 / phrases.length
@@ -44,25 +46,17 @@
 <div class="col">
     <div class="row buttons">
         {#each episodes as episode, episode_id}
-        <div class="col">
             <button class="episode"
                 class:selected={selected.has(episode_id)}
                 on:press={() => on_press(episode_id)}
                 use:longpress on:longpress={() => on_longpress(episode_id)}>
-                {#each episode.phrases as phrase, phrase_id}
-                <i style="border-color:{episode.off ? 'grey' : episode_id == active ? emphasize(phrase.instrument.color) : adjust(phrase.instrument.color, phrase.volume)};
-                    width:{2 * radius(episode.phrases, phrase_id)}px;
-                    height:{2 * radius(episode.phrases, phrase_id)}px">
-                </i>
-                {/each}
-                <div class="label outline">{episode_id + 1}</div>
-                <div class="label" class:active={episode_id == active}>{episode_id + 1}</div>
+                <ProgressCircle
+                progress={episode_id == active ? round : null}
+                rounds={episode.repeat}
+                width={button_size}px
+                height={button_size}px><div class="label" class:active={episode_id == active}>{episode_id + 1}</div></ProgressCircle>
+    
             </button>
-            <div class="repeat row">
-                {#if round != null && episode_id == active}{round + 1}/{/if}<!--
-                -->{#if episode.repeat === Infinity}&infin;{:else}{#if round == null || episode_id != active}&times;{/if}{episode.repeat}{/if}
-            </div>
-        </div>
         {/each}
         {#if !blocked}
         <div class="col plus" style="order:100">
@@ -75,15 +69,13 @@
     {#if selected.size}
     <aside>
         <ul>
-            <li><button on:click={() => dispatch("solo", {})}>solo</button></li>
+            <li><button on:click={() => dispatch("solo", {})}>sol</button></li>
             <li><button on:click={() => dispatch("on", {})}>on</button></li>
             <li><button on:click={() => dispatch("off", {})}>off</button></li>
-            <li><div class="col">
-                <button on:click={() => dispatch("repeat", {x: 1})}>&times;1</button>
-                <button on:click={() => dispatch("repeat", {x: 2})}>&times;2</button>
-                <button on:click={() => dispatch("repeat", {x: 4})}>&times;4</button>
-                <button on:click={() => dispatch("repeat", {x: 8})}>&times;8</button>
-            </div></li>
+            <li><button on:click={() => dispatch("repeat", {x: 1})}>&times;1</button></li>
+            <li><button on:click={() => dispatch("repeat", {x: 2})}>&times;2</button></li>
+            <li><button on:click={() => dispatch("repeat", {x: 4})}>&times;4</button></li>
+            <li><button on:click={() => dispatch("repeat", {x: 8})}>&times;8</button></li>
             <li><button disabled={selected.size>1} on:click={() => dispatch("repeat", {x: Infinity})}>&infin;</button></li>
             <li><button on:click={() => dispatch("del", {})}>del</button></li>
         </ul>
@@ -92,30 +84,26 @@
 </div>
 
 <style>
+    .buttons {
+        gap: 3px;
+    }
     .buttons > * {
-        flex-basis: 64px;
-        min-width: 10px;
+        flex-basis: 32px;
+        min-width: 32px;
     }
-    .buttons > *:last-child {
-        flex-shrink: 0;
-    }
+
     button.episode {
         overflow: hidden;
         margin: 0;
         padding: 0;
-        width: 64px;
-        min-height: 64px;
-        border-radius: 50%;
+        width: 32px;
+        min-height: 32px;
         display: block;
         position: relative;
-        box-shadow: 1px 1px 8px 0px rgba(0, 0, 0, 0.2),
-            inset 0px 0px 5px 0px rgba(0, 0, 0, 0.2);
-        border: 1px solid #ccc;
     }
     button.episode.selected {
-        box-shadow:  0px 0px 5px 2px #00ccffa4,
-            inset 0px 0px 5px 0px rgba(0, 0, 0, 0.2);
-        border: 1px solid #00ccff;
+        background: var(--theme-mid);
+        border-radius: 50%;
     }
     button.episode > * {
         position: absolute;
@@ -128,23 +116,20 @@
         transform: translate(-50%, -50%)
     }
     button.episode i {
-        border-width: 3px;
+        border-width: 2px;
         border-style: solid;
         border-radius: 50%;
     }
     button.episode .label {
         margin: 0;
         padding: 0;
-        font-size: 2rem;
-        line-height: 2rem;
-        width: 2rem;
-        height: 2rem;
-        font-weight: bold; 
-        letter-spacing: -1px;
-        font-family: "Helvetica Narrow","Arial Narrow",Tahoma,Arial,Helvetica,sans-serif;
+        font-size: 16px;
+        line-height: 32px;
+        font-weight: bold;
+        color: var(--theme-fg);
     }
-    button.episode .label.outline {
-        -webkit-text-stroke: 3px white;
+    button.episode .label.active {
+        color: var(--theme-accent);
     }
     aside {
         width: 100%;
@@ -156,9 +141,9 @@
         margin: 0;
         position: absolute;
         z-index: 2;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 8px;
+        left: 0px;
+        top: 6px;
+        height: 24px;
         display: flex;
         list-style: none;
     }
@@ -166,19 +151,14 @@
         margin: 0 4px;
     }
     aside button {
-        width: 36px;
+        width: 28px;
+        height: 20px;
         border-radius: 8px;
         padding: 0 0 4px 0px;
         margin: 0;
-        border: 1px solid #8fafe7;
+        font-size: 14px;
+        line-height: 14px;
+        border: 3px solid var(--theme-fg);
     }
-    .label.active {
-        color: blue;
-    }
-    .repeat {
-        font-size: 1.3rem;
-        text-align: center;
-        font-weight: bold;
-        justify-content: center;
-    }
+
 </style>

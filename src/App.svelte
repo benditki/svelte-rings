@@ -20,6 +20,7 @@
     import EpisodeBar from "./episode_bar.svelte"
     import InstrumentBar from "./instrument_bar.svelte"
     import BpmSelect from "./bpm_select.svelte"
+    import PlayButton from "./play_button.svelte" 
     import RhythmMenu from "./rhythm_menu.svelte"
     import VolumeView from "./volume_view.svelte"
 
@@ -35,15 +36,26 @@
             { letter: 'c', sym: symbols.QUAD,              sound: sounds.sangban_closed }]),
         dundunba: new Instrument("dundunba", "#d62728", [{ sound: sounds.dundunba }]),
         djembe:   new Instrument("djembe", "#2ca02c", [
+            { letter: 'b', sym: symbols.TRAPEZ,            sound: sounds.djembe_base },
             { letter: 't', sym: symbols.DOT,               sound: sounds.djembe_tone },
             { letter: 's', sym: symbols.TRIAG,             sound: sounds.djembe_slap },
-            { letter: 'b', sym: symbols.TRAPEZ,            sound: sounds.djembe_base }]),
+        ]),
         bass:     new Instrument('bass', "#8c564b", [
             { letter: 's', sym: symbols.DOT,               sound: sounds.sangban },
             { letter: 'c', sym: symbols.QUAD,              sound: sounds.sangban_closed },
             { letter: 'd', sym: symbols.TRAPEZ,            sound: sounds.dundunba },
             { letter: 'k', sym: symbols.TRIAG,             sound: sounds.kenkeni }]),
     }
+
+    let instrument_order = new Map([
+        [ instruments.clave,        0.0 ],
+        [ instruments.shekere,      0.05 ],
+        [ instruments.djembe,       0.3 ],
+        [ instruments.bass,         0.6 ],
+        [ instruments.kenkeni,      0.8 ],
+        [ instruments.sungban,      0.95 ],
+        [ instruments.dundunba,     1 ],
+    ].sort((a, b) => a[1] - b[1]))        
     
     let rhythms = [
         new Rhythm("tatata", 16, [
@@ -277,21 +289,17 @@
         selected_episodes = new Set()
     }
 
-    function instrument_switch(phrase_id, sym) {
-        const instrument = rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].instrument
-        const index = instrument.sym_list.indexOf(sym)
-        if (index > 0) {
-            instrument.sym_list[index] = instrument.sym_list[0]
-            instrument.sym_list[0] = sym
+    function instrument_switch(instrument) {
+        if (instrument.sym_list.length > 1) {
+            instrument.sym_list.push(instrument.sym_list.shift())
             instruments = instruments
-            rhythms = rhythms
         }
     }
 
     function add_instrument(instrument) {
         if (rhythms[active.rhythm_id].blocked) return
 
-        if (rhythms[active.rhythm_id].episodes[active.episode_id].phrases.length >= 5) return;
+        // if (rhythms[active.rhythm_id].episodes[active.episode_id].phrases.length >= 5) return;
         rhythms[active.rhythm_id].episodes[active.episode_id].phrases = [
             ...rhythms[active.rhythm_id].episodes[active.episode_id].phrases,
             Phrase.fromPeriod(instrument, rhythms[active.rhythm_id].period)
@@ -317,7 +325,7 @@
     }
 
     function load_active() {
-        const loaded = JSON.parse(localStorage.getItem("active") || "{}")
+        const loaded = JSON.parse(localStorage.getItem("active") || '{"rhythm_name": "koreduga", "episode_id": 0}')
         let index = rhythms.findIndex(rhythm => rhythm.name == loaded.rhythm_name)
         if (index >= 0) {
             active.rhythm_id = index
@@ -510,6 +518,7 @@ main {
     display: flex;
     flex-direction: column;
     min-height: 10px;
+    background-color: var(--theme-bg);
 }
 main > * {
     flex-shrink: 0;
@@ -520,15 +529,18 @@ article {
     flex-shrink: 1;
     min-height: 48px;
     display: flex;
-    flex-direction: column;
-    padding: 8px 0px;
+    flex-direction: row;
+    border: 3px solid var(--theme-fg);
 }
 .version {
     position: fixed;
     right: 0;
     top: 0;
-    line-height: 0.8em;
     padding: 1px;
+    font-family: monospace;
+    line-height: 50%;
+    font-weight: bold;
+    font-size: 8pt;
 }
 .version.debug {
     text-shadow: 0px 0px 4px cyan;
@@ -539,17 +551,41 @@ article {
 
 <div class="version" class:debug={debug_active} on:click={() => { debug_active = !debug_active }}>v{VERSION}</div>
 
-<RhythmMenu {rhythms} active={active.rhythm_id}
-    on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
-    on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
-    on:new={(e) => create_rhythm(e.detail.period)}
-    on:del={()=> del_rhythm()}
-    on:clone={() => clone_rhythm()}/>
 <main>
+
+
+    <!-- <div class="centered" style="margin: 8px 0">
+        <BpmSelect bind:value={bpm} on:change={() => flush_started(false)}/>
+    </div> -->
+
+    {#each [true, false] as circular, article_id}
+    <article style={`order: ${article_id}`}>
+        <div><VolumeView value={current_volume} visible={volume_visible}/></div>
+        <InstrumentBar
+        {instrument_order}
+        {instruments}
+        episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
+        blocked={rhythms[active.rhythm_id].blocked}
+        on:switch={(e) => instrument_switch(e.detail.instrument)}
+        on:add={(e) => add_instrument(e.detail.instrument)}
+        on:del={(e) => del_instrument(e.detail.instrument)}
+        on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
+        <Circle {circular} {instrument_order}
+            episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
+            period={rhythms[active.rhythm_id].period}
+            phase={active.phase}
+            playing={started.ts != 0}
+            on:press={(e) => dot_toggle(e, active.episode_id)} 
+            on:swipeend={on_cirle_swipeend}
+            on:swipe={on_cirle_swipe}/>
+    </article>
+    {/each}
+
+    <div class="row" style="display: flex; justify-content: space-between; align-items: center">
     <EpisodeBar episodes={rhythms[active.rhythm_id].episodes}
         active={active.episode_id}
         blocked={rhythms[active.rhythm_id].blocked}
-        round={started.ts ? Math.floor(active.phase / rhythms[active.rhythm_id].round_duration(active.episode_id)) : null}
+        round={started.ts ? active.phase / rhythms[active.rhythm_id].round_duration(active.episode_id) : null}
         bind:selected={selected_episodes}
         on:change={(e)=> activate_episode(e.detail.episode_id)}
         on:add={()=> clone_episode()}
@@ -559,27 +595,15 @@ article {
         on:off={()=>set_off(true)}
         on:solo={()=>set_solo()}/>
 
-    <div class="centered" style="margin: 8px 0">
-        <BpmSelect bind:value={bpm} on:change={() => flush_started(false)}/>
+    <PlayButton playing={started.ts != 0}
+        on:toggle={() => toggle_play()}/>
+    
+        <RhythmMenu {rhythms} active={active.rhythm_id}
+    on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
+    on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
+    on:new={(e) => create_rhythm(e.detail.period)}
+    on:del={()=> del_rhythm()}
+    on:clone={() => clone_rhythm()}/>
     </div>
 
-    <article>
-        <div><VolumeView value={current_volume} visible={volume_visible}/></div>
-        <Circle episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
-            period={rhythms[active.rhythm_id].period}
-            phase={active.phase}
-            playing={started.ts != 0}
-            on:press={(e) => dot_toggle(e, active.episode_id)}
-            on:toggle={() => toggle_play()}
-            on:swipeend={on_cirle_swipeend}
-            on:swipe={on_cirle_swipe}/>
-    </article>
-    <InstrumentBar
-        {instruments}
-        episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
-        blocked={rhythms[active.rhythm_id].blocked}
-        on:switch={(e) => instrument_switch(e.detail.id, e.detail.sym)}
-        on:add={(e) => add_instrument(e.detail.instrument)}
-        on:del={(e) => del_instrument(e.detail.instrument)}
-        on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
 </main>
