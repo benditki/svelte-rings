@@ -160,6 +160,6 @@
 
 <style>
     svg {
-        padding: 24px;
+        padding: 0px 0px 12px 24px;
     }
 </style>
