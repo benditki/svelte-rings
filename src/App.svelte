@@ -531,6 +531,7 @@ article {
     min-height: 48px;
     display: flex;
     flex-direction: row;
+    justify-content: center;
     border: 3px solid var(--theme-fg);
 }
 .version {
