@@ -79,28 +79,30 @@
     }
 </script>
 
-<g transform="{trans(circular, phase)}">
+<g class="container" transform="{trans(circular, phase)}">
     {#if back}
+    <g class="back" use:longpress on:touch on:press on:swipe on:swipeend>
         {#if circular}
         <path fill={color} d="{cont(radius, width, delta, gap)}"/>
         {:else}
-        <rect x={-delta/2 + gap/2} y={radius-width/2} height={width} width={delta - gap} fill={color}
-            use:longpress on:press on:touch on:swipe on:swipeend/>
+        <rect x={-delta/2 + gap/2} y={radius-width/2} height={width} width={delta - gap} fill={color}/>
         {/if}
+    </g>
     {/if}
 
     {#if sym}
-        <g transform={sym_trans(circular, radius, dot_shift)}>
+    <g class="sym" transform={sym_trans(circular, radius, dot_shift)}>
         <path fill={pulse_color} d={shape(sym, size)}
             stroke={outline_color} stroke-width={stroke_width()} data-debug={JSON.stringify({flash_color})}/>
         {#if flash_color}
         <path fill="none" d={shape(sym, size * 0.55)}
             stroke={flash_color} stroke-width={stroke_width()}/>
         {/if}
-        </g>
+    </g>
     {/if}
 
     {#if next_phase !== undefined}
+    <g class="connector">
         {#if circular}
         <line y2={radius * Math.sin(2 * Math.PI * (next_phase - phase))}
                 x1={dot_shift + radius}
@@ -126,11 +128,16 @@
                     data-debug={`next_phase=${next_phase}, phase=${phase}`}/>
             {/if}
         {/if}
+    </g>
     {/if}
 </g>
 
 <style>
-g {
+.container {
     touch-action: none;
+}
+
+.sym, .connector {
+    pointer-events: none;
 }
 </style>

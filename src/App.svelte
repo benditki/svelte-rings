@@ -299,19 +299,29 @@
     function add_instrument(instrument) {
         if (rhythms[active.rhythm_id].blocked) return
 
-        // if (rhythms[active.rhythm_id].episodes[active.episode_id].phrases.length >= 5) return;
-        rhythms[active.rhythm_id].episodes[active.episode_id].phrases = [
-            ...rhythms[active.rhythm_id].episodes[active.episode_id].phrases,
-            Phrase.fromPeriod(instrument, rhythms[active.rhythm_id].period)
-        ]
+        const episode = rhythms[active.rhythm_id].episodes[active.episode_id]
+        const {phrases, disabled_phrases} = episode
+        let instrument_phrases = disabled_phrases.filter(p => p.instrument == instrument)
+        
+        if (instrument_phrases.length > 0) {
+            episode.disabled_phrases = disabled_phrases.filter(p => p.instrument != instrument)
+        } else {
+            instrument_phrases = [Phrase.fromPeriod(instrument, rhythms[active.rhythm_id].period)]
+        }
+
+        episode.phrases = phrases.concat(instrument_phrases)
+        rhythms = rhythms
     }
 
-    function del_instrument(instrument) {
+    function disable_instrument(instrument) {
         if (rhythms[active.rhythm_id].blocked) return
 
-        rhythms[active.rhythm_id].episodes[active.episode_id].phrases =
-            rhythms[active.rhythm_id].episodes[active.episode_id].phrases
-                .filter(p => p.instrument != instrument)
+        const episode = rhythms[active.rhythm_id].episodes[active.episode_id]
+        const {phrases, disabled_phrases} = episode
+        const instrument_phrases = phrases.filter(p => p.instrument == instrument)
+        episode.phrases = phrases.filter(p => p.instrument != instrument)
+        episode.disabled_phrases = disabled_phrases.concat(instrument_phrases)
+        rhythms = rhythms
     }
 
     let active = { rhythm_id: 0, episode_id: 0, pos: 0, phase: 0 }
@@ -554,12 +564,6 @@ article {
 <div class="version" class:debug={debug_active} on:click={() => { debug_active = !debug_active }}>v{VERSION}</div>
 
 <main>
-
-
-    <!-- <div class="centered" style="margin: 8px 0">
-        <BpmSelect bind:value={bpm} on:change={() => flush_started(false)}/>
-    </div> -->
-
     {#each [true, false] as circular, article_id}
     <article style={`order: ${article_id}`}>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
@@ -570,7 +574,7 @@ article {
         blocked={rhythms[active.rhythm_id].blocked}
         on:switch={(e) => instrument_switch(e.detail.instrument)}
         on:add={(e) => add_instrument(e.detail.instrument)}
-        on:del={(e) => del_instrument(e.detail.instrument)}
+        on:disable={(e) => disable_instrument(e.detail.instrument)}
         on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
         <Circle {circular} {instrument_order}
             episode={rhythms[active.rhythm_id].episodes[active.episode_id]}

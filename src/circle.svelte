@@ -3,11 +3,10 @@
     import { adjust, alternate} from "./colors.js"
     import { in_limits } from "./utils.js"
     import { createEventDispatcher } from 'svelte'
+
 	const dispatch = createEventDispatcher()
 
     const radius0 = 0.12
-    const radius_circular_gap = 0.15
-    const radius_gap = 0.05
 
     export let instrument_order = Map()
     export let circular = true
@@ -53,11 +52,13 @@
     }
 
     $: parts = setup_parts(circular, instrument_order, episode)
-    $: radius_delta = ((circular ? 0.5 : 1.0) - radius0) / Math.max(circular ? 4 : 10, parts.length)
 
     function color(playing, phrase, period, pulse, phase) {
         const beat_period = {9: 3, 12: 3, 16: 4, 18: 3}[period] || 4
         return Math.floor(pulse.phase/beat_period) % 2 != 0 ? alternate(phrase.instrument.color) : phrase.instrument.color
+    }
+    function calc_power(t) {
+        return in_limits(t, 0.0001, 4) ? 10 * Math.exp(-t * 2) : 0
     }
     function pulse_info(playing, instrument, pulses, period, phase) {
         const attacks = pulses
@@ -74,7 +75,7 @@
                         power = amplitude * Math.exp(-t * decay)
                         self_shift = power * Math.sin(t * frequency * Math.PI * 2)
                     }
-                    power = in_limits(t, 0.0001, 4) ? 10 * Math.exp(-t * 2) : 0
+                    power = calc_power(t)
                 }
                 return { ...pick(pulse, "sym", "phase"), power, self_shift}
             })
@@ -136,7 +137,6 @@
         {#if attack.next_distance < 4.001}
         <Dot back={false} {...common_props(circular, part)}
             dot_shift={attack.shift_amount}
-            width={radius_delta - radius_gap/2}
             gap={circular?0.01:0.0035}
             phase={(attack.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
             next_phase={(part.attacks[attack.next_attack_id].phase / period) % 1 + (circular? 0 : 0.5 / period)}
@@ -147,7 +147,7 @@
         {#each part.attacks as attack}
         <Dot back={false} {...common_props(circular, part)}
             dot_shift={attack.shift_amount}
-            width={radius_delta - radius_gap/2} size={circular?0.038:0.03}
+            size={circular?0.038:0.03}
             gap={circular?0.01:0.0035}
             phase={(attack.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
             sym={attack.sym}
@@ -155,7 +155,7 @@
             />
         {/each}
     {/each}
-    </g>
+</g>
 </svg>
 
 <style>
