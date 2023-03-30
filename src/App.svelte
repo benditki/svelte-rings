@@ -547,8 +547,8 @@ article {
 
 .instrument_container {
     position: fixed;
-    top: 8px;
-    height: 300px;
+    top: 12px;
+    height: 260px;
     width: 32px;
 }
 .version {
