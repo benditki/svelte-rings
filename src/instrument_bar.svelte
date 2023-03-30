@@ -15,8 +15,9 @@ let selected = null
 const period = 6
 
 const presented_dot = { radius: 0, size: 0.42, width: 1 }
-const hidden_dot = { radius: 0, size: 0.38, width: 0.68 }
-const border_dot = { radius: 0.43, width: 0.15, delta: 1/2 }
+const hidden_dot = { radius: 0, size: 0.38, width: 0.78 }
+const border_dot = { radius: 0.43, width: 0.1, delta: 1/2 }
+const initial_shift = new Map([[true /*presented*/, 0.2], [false, -0.12]])
 
 let x_shift = new Map()
 
@@ -28,7 +29,7 @@ function on_touch(presented) {
     instrument.play()
 }
 
-function on_press(presented) {
+function on_longpress(presented) {
     const {instrument, index} = presented
     if (index != -1) {
         dispatch("switch", {instrument})
@@ -39,15 +40,14 @@ function on_press(presented) {
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
 
 function on_swipe(presented, presented_id, {dx}) {
-    const new_shift = clamp(shift(presented, presented_id, x_shift) + dx * 0.05, -0.5, 0.2)
-    x_shift = x_shift.set(presented_id, new_shift + (presented.index == -1 ? 0.3 : 0))
+    const new_shift = clamp(shift(presented, presented_id, x_shift) + dx * 0.03, -0.5, 0.5)
+    x_shift = x_shift.set(presented_id, new_shift - initial_shift.get(presented.index != -1))
     if (new_shift < -0.3 && presented.index != -1) {
         dispatch("disable", {instrument: presented.instrument})
     }
     if (new_shift > 1 && presented.index == -1) {
         dispatch("add", {instrument: presented.instrument})
     }
-    console.log(presented.index, dx, new_shift, shift(presented, presented_id, x_shift))
 }
 
 function on_swipeend(presented, presented_id) {
@@ -67,7 +67,7 @@ function presented_instruments(instruments, episode, instrument_order) {
 }
 
 function shift(presented, presented_id, x_shift) {
-    return (x_shift.get(presented_id) || 0) + (presented.index == -1 ? -0.3 : 0)
+    return (x_shift.get(presented_id) || 0) + initial_shift.get(presented.index != -1)
 }
 
 </script>
@@ -82,8 +82,8 @@ function shift(presented, presented_id, x_shift) {
                 <g transform="rotate(-90)">
                 <Dot {...(presented.index != -1 ? presented_dot : hidden_dot)} color={presented.instrument.color} sym={presented.instrument.sym_list[0]}
                     on:touch={() => on_touch(presented)}
-                    on:press={() => on_press(presented)}
-                    on:longpress={() => on_press(presented)}
+                    on:longpress={() => on_longpress(presented)}
+                    on:release={() => on_release(presented)}
                     on:swipe={(e) => on_swipe(presented, presented_id, e.detail)}
                     on:swipeend={(e) => on_swipeend(presented, presented_id)}/>
                 {#if presented.index == -1}
@@ -100,7 +100,7 @@ function shift(presented, presented_id, x_shift) {
 
 <style>
 :root {
-   --s: 25px;
+   --s: 36px;
 }
 
 .container {

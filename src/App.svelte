@@ -544,6 +544,13 @@ article {
     justify-content: center;
     border: 3px solid var(--theme-fg);
 }
+
+.instrument_container {
+    position: fixed;
+    top: 8px;
+    height: 300px;
+    width: 32px;
+}
 .version {
     position: fixed;
     right: 0;
@@ -567,15 +574,6 @@ article {
     {#each [true, false] as circular, article_id}
     <article style={`order: ${article_id}`}>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
-        <InstrumentBar
-        {instrument_order}
-        {instruments}
-        episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
-        blocked={rhythms[active.rhythm_id].blocked}
-        on:switch={(e) => instrument_switch(e.detail.instrument)}
-        on:add={(e) => add_instrument(e.detail.instrument)}
-        on:disable={(e) => disable_instrument(e.detail.instrument)}
-        on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
         <Circle {circular} {instrument_order}
             episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
             period={rhythms[active.rhythm_id].period}
@@ -609,12 +607,22 @@ article {
     <PlayButton playing={started.ts != 0}
         on:toggle={() => toggle_play()}/>
     
-        <RhythmMenu {rhythms} active={active.rhythm_id}
+    <RhythmMenu {rhythms} active={active.rhythm_id}
     on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
     on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
     on:new={(e) => create_rhythm(e.detail.period)}
     on:del={()=> del_rhythm()}
     on:clone={() => clone_rhythm()}/>
     </div>
-
 </main>
+<div class="instrument_container">
+    <InstrumentBar
+    {instrument_order}
+    {instruments}
+    episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
+    blocked={rhythms[active.rhythm_id].blocked}
+    on:switch={(e) => instrument_switch(e.detail.instrument)}
+    on:add={(e) => add_instrument(e.detail.instrument)}
+    on:disable={(e) => disable_instrument(e.detail.instrument)}
+    on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
+</div>

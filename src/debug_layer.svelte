@@ -1,5 +1,6 @@
 <script>
     export let active
+    import {external_points} from "./debug.js"
     let width = 100, height = 100
 
     $: activate(active)
@@ -22,9 +23,11 @@
         points = points
             .map(point => ({ ...point, life: point.life - 0.08 }))
             .filter(point => point.life > 0)
+        external_points.update_life()
     }
 
     function activate(active) {
+        external_points.activate(active)
         if (id == 0 && active) {
             update()
         } else if (id != 0 && !active) {
@@ -52,6 +55,16 @@
         <line x1={points[point_id - 1].x} y1={points[point_id - 1].y} x2={point.x} y2={point.y} opacity={point.life}/>
         {/if}
     {/each}
+    {#each $external_points as point, point_id}
+        {#if point_id == 0}
+        <circle class="external" cx={point.x} cy={point.y} opacity={point.life}/>
+        {:else}
+        <line class="external" x1={$external_points[point_id - 1].x} y1={$external_points[point_id - 1].y} x2={point.x} y2={point.y} opacity={point.life}/>
+        {/if}
+        {#if point.get_label}
+        <text x={point.x} y={point.y}>{point.get_label()}</text>
+        {/if}
+    {/each}
 </svg>
 {/if}
 
@@ -67,13 +80,32 @@ svg {
 }
 circle {
     fill: cyan;
+    r: 10;
 }
 circle.big {
     fill: #7affffb9;
+    r: 20;
 }
 line {
     stroke: cyan;
     stroke-width: 20;
     stroke-linecap: round;
+}
+circle.external {
+    fill: rgb(255, 158, 13);
+    r: 5;
+}
+circle.external.big {
+    fill: rgba(255, 158, 13, 0.712);
+    r: 10;
+}
+line.external {
+    stroke: rgb(255, 158, 13);
+    stroke-width: 10;
+    stroke-linecap: round;
+}
+
+text {
+    fill: black;
 }
 </style>

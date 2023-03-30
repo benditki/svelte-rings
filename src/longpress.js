@@ -1,3 +1,7 @@
+import {external_points} from "./debug.js"
+
+const debug_points = []
+
 export function longpress(node, opts = { duration: 400, threshold: 10 }) {
     let state = {}
 
@@ -13,6 +17,8 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
     }
 
     function clear() {
+        debug_points.forEach(point => point.life = 1)
+        debug_points.length = 0
         if (state.timer) clearTimeout(state.timer)
         state = {}
         window.removeEventListener('mouseup',     on_mouseup)
@@ -22,9 +28,26 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
         window.removeEventListener('touchmove',   on_touchmove)
     }
 
+    function add_debug_point(x, y, label) {
+        const start_ts = performance.now()
+        let last_duration = 0
+        const get_label = (updated = true) => {
+            if (updated) {
+                last_duration = Math.floor(performance.now() - start_ts)
+            }
+            return last_duration
+        }
+            
+        let point = {x, y, get_label }
+        debug_points.push(point)
+        external_points.add(point)
+        return point
+    }
+
     function start(x, y) {
         //console.log("start", x, y)
         clear()
+        const point = add_debug_point(x, y)
         window.addEventListener('mouseup',     on_mouseup)
         window.addEventListener('mousemove',   on_mousemove)
         window.addEventListener('touchend',    on_touchend, { passive: false })
@@ -32,6 +55,7 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
         window.addEventListener('touchmove',   on_touchmove, { passive: false })
 
         const timer = setTimeout(() => {
+                point.life = 10
                 state.timer = 0
                 if (!state.dir) {
                     dispatch('longpress')
@@ -62,7 +86,11 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
     function finish() {
         if ('init' in state) {
             if (!state.dir) {
-                if (state.timer) dispatch('press')
+                if (state.timer) {
+                    dispatch('press')
+                } else {
+                    dispatch('release')
+                }
             } else {
                 dispatch("swipeend")
             }
