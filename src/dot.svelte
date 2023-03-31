@@ -81,7 +81,7 @@
 
 <g class="container" transform="{trans(circular, phase)}">
     {#if back}
-    <g class="back" use:longpress on:touch on:press on:longpress on:swipe on:swipeend on:release>
+    <g class="back" use:longpress on:touch on:move on:press on:longpress on:swipe on:swipeend on:release on:finish_touch>
         {#if circular}
         <path fill={color} d="{cont(radius, width, delta, gap)}"/>
         {:else}

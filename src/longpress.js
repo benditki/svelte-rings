@@ -44,7 +44,7 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
         return point
     }
 
-    function start(x, y) {
+    function start(x, y, orig_event) {
         //console.log("start", x, y)
         clear()
         const point = add_debug_point(x, y)
@@ -59,11 +59,11 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
                 state.timer = 0
                 if (!state.dir) {
                     dispatch('longpress')
-                    clear()
+                    // clear()
                 }
             }, opts.duration)
         state = { init: {x, y}, last: {x, y}, timer }
-        dispatch('touch', {x, y})
+        dispatch('touch', {x, y, orig_event})
     }
 
     function update(x, y) {
@@ -84,7 +84,9 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
     }
 
     function finish() {
+        // console.log("finish", state)
         if ('init' in state) {
+            dispatch("finish_touch")
             if (!state.dir) {
                 if (state.timer) {
                     dispatch('press')
@@ -116,7 +118,7 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
         if (e.changedTouches.length > 1) {
             clear()
         } else {
-            start(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
+            start(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e)
         }
     }
     function on_touchend(e) {

@@ -3,10 +3,12 @@
     import { adjust, alternate} from "./colors.js"
     import { in_limits } from "./utils.js"
     import { createEventDispatcher } from 'svelte'
+    import * as symbols from "./symbols"
 
 	const dispatch = createEventDispatcher()
 
     const radius0 = 0.12
+    const max_lift = 0.08
 
     export let instrument_order = Map()
     export let circular = true
@@ -14,12 +16,13 @@
     export let period
     export let playing = false
     export let phase
+    export let pointer
 
 
     const pick = (obj, ...keys) => Object.fromEntries(
         keys.filter(key => key in obj).map(key => [key, obj[key]]));
 
-    function setup_parts(circular, instrument_order, episode) {
+    function setup_parts(circular, instrument_order, episode, pointer) {
         const max_width = 1
         const active_width = circular ? 0.12 : 0.08
         const max_free_width = circular ? 1 : 0.2
@@ -46,27 +49,34 @@
             }
         ))
         return episode.phrases.reduce(
-            (res, phrase, phrase_id) => 
-                res.concat(phrase.parts.map((pulses, part_id) => ({ phrase, phrase_id, part_id, radius: instrument_radius.get(phrase.instrument) + active_width * part_id, pulses, attacks: pulse_info(playing, phrase.instrument, pulses, phrase.parts.length * period, phase)}))),
+            (res, phrase, phrase_id) => {
+                return res.concat(phrase.parts.map((pulses, part_id) => {
+                    const pointer_phase = pointer.phrase_id == phrase_id && pointer.part_id == part_id ? pointer.phase - part_id * period : undefined
+                    const attacks = pulse_info(circular, playing, phrase.instrument, pulses, phrase.parts.length * period, phase, pointer_phase)
+                    const radius = instrument_radius.get(phrase.instrument) + active_width * part_id
+                    return { phrase, phrase_id, part_id, radius, pulses, attacks, pointer_phase}
+                }))
+            },
             []).sort((a, b) => instrument_order.get(b.phrase.instrument) - instrument_order.get(a.phrase.instrument))
     }
 
-    $: parts = setup_parts(circular, instrument_order, episode)
+    $: parts = setup_parts(circular, instrument_order, episode, pointer)
 
-    function color(playing, phrase, period, pulse, phase) {
+    function color(phrase, period, phase) {
         const beat_period = {9: 3, 12: 3, 16: 4, 18: 3}[period] || 4
-        return Math.floor(pulse.phase/beat_period) % 2 != 0 ? alternate(phrase.instrument.color) : phrase.instrument.color
+        return Math.floor(phase/beat_period) % 2 != 0 ? alternate(phrase.instrument.color) : phrase.instrument.color
     }
     function calc_power(t) {
         return in_limits(t, 0.0001, 4) ? 10 * Math.exp(-t * 2) : 0
     }
-    function pulse_info(playing, instrument, pulses, period, phase) {
+    function pulse_info(circular, playing, instrument, pulses, period, phase, pointer_phase) {
         const attacks = pulses
-            .filter(pulse => pulse.sym)
+            .filter(pulse => (!circular && pointer_phase != undefined) || pulse.sym)
             .sort((pulse_a, pulse_b) => pulse_a.phase - pulse_b.phase)
             .map((pulse) => {
-                let power = undefined, self_shift = 0
-                if (playing) {
+                let power = undefined
+                let self_shift = 0
+                if (pulse.sym && playing) {
                     const t = Math.max(0, (phase - pulse.phase) % period)
                     if (in_limits(t, -0.1, 0.6)) {
                         const amplitude = 0.03
@@ -77,7 +87,19 @@
                     }
                     power = calc_power(t)
                 }
-                return { ...pick(pulse, "sym", "phase"), power, self_shift}
+                let lift = 0
+                let stub_sym = {}
+                if (pointer_phase != undefined) {
+                    const y = Math.abs(pointer_phase - pulse.phase)
+                    if (!circular) {
+                        lift = max_lift * Math.exp(-y * 0.5)
+                    }
+                    if (!pulse.sym && in_limits(y, -0.49, 0.5)) {
+                        stub_sym = {sym: symbols.STUB}
+                    }
+                }
+
+                return { ...pick(pulse, "sym", "phase"), ...stub_sym, power, self_shift, lift}
             })
 
         return attacks.map((attack, attack_id, attack_pulses) => {
@@ -87,7 +109,7 @@
                 Math.abs(next_attack.phase - attack.phase) % period,
                 Math.abs(next_attack.phase - attack.phase + period) % period)
             
-            const shift_amount = attacks.reduce((shift_amount, other) => {
+            const shift_amount = attack.lift + attacks.reduce((shift_amount, other) => {
                 const d1 = Math.abs((attack.phase - other.phase - period) % period)
                 const d2 = Math.abs((attack.phase - other.phase + period) % period)
                 const d3 = Math.abs((attack.phase - other.phase) % period)
@@ -101,10 +123,30 @@
     const background_width = (circular) => circular ? 0.02 : 0.06
 
     function common_props(circular, part) {
-        const min_radius = circular ? 0.14 : 0.05
+        const min_radius = circular ? 0.14 : 0.15
         const max_radius = circular ? 0.5 : 1
         const radius = part.radius * (max_radius - min_radius) + min_radius
         return {circular, radius}
+    }
+
+    function lifted_props(circular, part, lift) {
+        const {radius: common_radius} = common_props(circular, part)
+        const radius = common_radius - 0.95 * lift
+        return {circular, radius}
+    }
+
+    function on_touch(e, part, pulse, period) {
+        const {x, y} = e.detail
+        let point = e.target.ownerSVGElement.createSVGPoint()
+        point.x = x
+        point.y = y
+        point = point.matrixTransform(e.target.getScreenCTM().inverse())
+        const phase = pulse.phase + (part.part_id + point.x) * period
+        dispatch("touch", { phrase_id: part.phrase_id, part_id: part.part_id, phase })
+    }
+
+    function dot_size(circular, attack) {
+        return circular?0.038:((attack.sym == symbols.STUB ? 0.015 : 0.03) + attack.lift * 0.2)
     }
 
 </script>
@@ -117,22 +159,40 @@
         width={background_width(circular)}
         gap={circular?0.01:0.0035}
         phase={(pulse.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
-        color={color(playing, part.phrase, period, pulse, phase)}
+        color={color(part.phrase, period, pulse.phase)}
+        on:touch={(e) => on_touch(e, part, pulse, period)}
+        on:move={(e) => on_touch(e, part, pulse, period)}
         on:press={() => dispatch("press", { phrase_id: part.phrase_id, part_id: part.part_id, pulse_id })}
         on:swipe={(e) => dispatch("swipe", { phrase_id: part.phrase_id, part_id: part.part_id, pulse_id, ...e.detail })}
-        on:swipeend/>
+        on:swipeend on:finish_touch/>
         {/each}
     {/each}
-    {#each parts as part}
-        {#each part.pulses as pulse, pulse_id}
-        {#if playing}
+    {#each parts.slice().sort((a, b) => (a.pointer_phase == undefined ? 0 : 1) - (b.pointer_phase == undefined ? 0 : 1)) as part}
+        {#if !circular && part.pointer_phase != undefined}
+        {#each part.attacks as attack}
+        {#if in_limits(part.pointer_phase - attack.phase, -0.5, 0.5)}
+        <Dot {...lifted_props(circular, part, attack.lift * 0.5)}
+            width={background_width(circular) + attack.lift * 0.1}
+            gap={circular?0.01:0.0035}
+            phase={(part.pointer_phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={0.4 / period / (circular ? common_props(circular, part).radius * 6 : 2)}
+            color={"red"}/>
+        {/if}
+        {/each}
+        {/if}
+        {#if playing && in_limits(phase % (part.phrase.parts.length * period), part.part_id * period, (part.part_id + 1) * period)}
         <Dot {...common_props(circular, part)}
             width={background_width(circular)}
             gap={circular?0.01:0.0035}
             phase={(phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={0.4 / period / (circular ? common_props(circular, part).radius * 6 : 2)}
             color={"var(--theme-accent)"}/>
         {/if}
-        {/each}
+        {#if part.pointer_phase != undefined}
+        <Dot {...common_props(circular, part)}
+            width={background_width(circular)}
+            gap={circular?0.01:0.0035}
+            phase={(part.pointer_phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={0.4 / period / (circular ? common_props(circular, part).radius * 6 : 2)}
+            color={"red"}/>
+        {/if}
         {#each part.attacks as attack}
         {#if attack.next_distance < 4.001}
         <Dot back={false} {...common_props(circular, part)}
@@ -147,10 +207,11 @@
         {#each part.attacks as attack}
         <Dot back={false} {...common_props(circular, part)}
             dot_shift={attack.shift_amount}
-            size={circular?0.038:0.03}
+            size={dot_size(circular, attack)}
             gap={circular?0.01:0.0035}
             phase={(attack.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
-            sym={attack.sym}
+            sym={attack.sym == symbols.STUB ? symbols.DOT : attack.sym}
+            {...(attack.sym == symbols.STUB ? {pulse_color: alternate(part.phrase.instrument.color), outline_color: "var(--theme-fg)"} : {})}
             flash_color={attack.power ? adjust(part.phrase.instrument.color, attack.power): undefined}
             />
         {/each}

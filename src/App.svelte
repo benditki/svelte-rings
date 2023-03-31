@@ -498,6 +498,17 @@
         setTimeout(() => { volume_visible = false}, 300)
     }
 
+    let pointer = {}
+
+    function on_circle_touch(e, episode_id) {
+        const {phrase_id, part_id, phase} = e.detail
+        pointer = { episode_id, phrase_id, part_id, phase }
+    }
+
+    function on_cirle_finish_touch(e) {
+        pointer = {}
+    }
+
     function clamp(x, l1, l2) {
         return x < l1 ? l1 : x > l2 ? l2 : x
     }
@@ -579,8 +590,11 @@ article {
             period={rhythms[active.rhythm_id].period}
             phase={active.phase}
             playing={started.ts != 0}
+            pointer={pointer.episode_id == active.episode_id ? pointer : {}}
+            on:touch={(e) => on_circle_touch(e, active.episode_id)}
             on:press={(e) => dot_toggle(e, active.episode_id)} 
             on:swipeend={on_cirle_swipeend}
+            on:finish_touch={on_cirle_finish_touch}
             on:swipe={on_cirle_swipe}/>
         {#if article_id == 0}
         <div class="centered" style="position: absolute; width: 100%; bottom: 0">
