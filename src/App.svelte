@@ -501,8 +501,8 @@
     let pointer = {}
 
     function on_circle_touch(e, episode_id) {
-        const {phrase_id, part_id, phase} = e.detail
-        pointer = { episode_id, phrase_id, part_id, phase }
+        const {phrase_id, part_id, phase, vertical_offset} = e.detail
+        pointer = { episode_id, phrase_id, part_id, phase, vertical_offset }
     }
 
     function on_cirle_finish_touch(e) {
