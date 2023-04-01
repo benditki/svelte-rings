@@ -8,7 +8,7 @@
 	const dispatch = createEventDispatcher()
 
     const radius0 = 0.12
-    const max_lift = 0.14
+    const max_lift = 0.18
     const min_lift = 0.06
 
     export let instrument_order = Map()
