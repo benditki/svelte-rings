@@ -93,8 +93,8 @@
                 if (pointer.phase != undefined) {
                     const y = Math.abs(pointer.phase - pulse.phase)
                     if (!circular) {
-                        if (pointer.vertical_offset*0.04 < - 0.5 * max_lift) {
-                            lift = min_lift
+                        if (pointer.vertical_offset*0.04 < - 0.25 * max_lift) {
+                            lift = -min_lift
                         } else {
                             lift = Math.min(max_lift, Math.max(min_lift, max_lift - pointer.vertical_offset*0.04))
                         }
@@ -137,7 +137,7 @@
 
     function lifted_props(circular, part, lift) {
         const {radius: common_radius} = common_props(circular, part)
-        const radius = common_radius - 0.95 * lift
+        const radius = common_radius - lift
         return {circular, radius}
     }
 
@@ -152,7 +152,7 @@
     }
 
     function dot_size(circular, attack) {
-        return circular?0.038:((attack.sym == symbols.STUB ? 0.015 : 0.03) + attack.lift * 0.2)
+        return circular?0.038:((attack.sym == symbols.STUB ? 0.015 : 0.03) + Math.abs(attack.lift) * 0.2)
     }
 
 </script>
