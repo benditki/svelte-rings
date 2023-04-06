@@ -11,7 +11,9 @@
     import Phrase from "./phrase.js"
     import Rhythm from "./rhythm.js"
     import Pulse from "./pulse.js"
+    import Attack from "./attack.js"
     import Instrument from "./instrument.js"
+    import Pointer from "./pointer.js"
     import { in_limits } from "./utils.js"
     import sounds from "./sounds.js"
     import * as symbols from "./symbols"
@@ -25,7 +27,8 @@
     import VolumeView from "./volume_view.svelte"
 
     import DebugLayer from "./debug_layer.svelte"
-    
+
+    let playing_attacks = new Map()
 
     let instruments = {
         clave:    new Instrument('clave', "#1f77b4", [{    sound: sounds.beat },
@@ -240,13 +243,15 @@
         const old_sym = phrase.parts[part_id][pulse_id].sym
         const front_sym = phrase.instrument.sym_list[0]
         const new_sym = old_sym == front_sym ? null : front_sym
-        rhythms[active.rhythm_id].episodes[episode_id]
-            .phrases[phrase_id].parts[part_id][pulse_id].sym = new_sym
+        phrase.set_pulse(part_id, pulse_id, new_sym)
             
-        
+        // console.log(`rhythms[${active.rhythm_id}].episodes[${episode_id}].phrases[${phrase_id}].parts[${part_id}].pulses[${pulse_id}].sym: ${String(old_sym)} -> ${String(new_sym)}`)
+
         if (!started.ts && new_sym) {
             phrase.instrument.play(new_sym, phrase.volume)
         }
+
+        rhythms = rhythms
     }
 
     function clone_episode() {
@@ -340,7 +345,7 @@
         if (index >= 0) {
             active.rhythm_id = index
             active.episode_id = loaded.episode_id
-            flush_started()
+            flush_started(false)
         }
     }
 
@@ -359,11 +364,22 @@
 
     load_bpm()
 
+    const max_elapsed = 500
+
+    let animation_requested = false
+    function request_animation() {
+        if (animation_requested) return
+        animation_requested = true
+        window.requestAnimationFrame(process)
+    }
+
     function process(now) {
+        animation_requested = false
+
         const rhythm = rhythms[active.rhythm_id]
-        let { episode_id, pos, phase } = started
         if (started.ts && rhythm.episodes.some(episode => episode.can_play)) {
-            window.requestAnimationFrame(process)
+            request_animation()
+            let { episode_id, pos, phase } = started
             const beat_period = {9: 3, 12: 3, 16: 4, 18: 3}[rhythm.period] || 4
             const elapsed = (now - started.ts) * (bpm / 60) * beat_period * 0.001
             pos += elapsed
@@ -384,25 +400,95 @@
 
             //let report = now.toFixed(2).padEnd(16, ' ') + (now - started.ts).toFixed(2).padEnd(8, ' ') + pos.toFixed(2).padStart(8, ' ')
             
-            for (const phrase of episode.phrases) {
+            for (const [phrase_id, phrase]  of episode.phrases.entries()) {
                 const phrase_length = phrase.parts.length * rhythm.period
-                for (const pulses of phrase.parts) {
-                    for (const pulse of pulses) {
-                        if (in_limits((phase - pulse.phase) % phrase_length, -0.01, 0.5)
-                            && (pulse.played == null
-                                || pos - pulse.played > phrase_length - 0.95)) {
-                            //report += phase.toFixed(2).padStart(8, ' ') + "=" + to_play[phrase_length].get(phase).toString().padEnd(6, ' ')
-                            if (phrase.volume > 0 && pulse.sym) {
-                                phrase.instrument.play(pulse.sym, phrase.volume)
-                            }
-                            pulse.played = pos
+                for (const attack of phrase.get_attacks()) {
+                    if (in_limits((phase - attack.phase) % phrase_length, -0.01, 0.5)
+                        && (attack.played == undefined
+                            || pos - attack.played > phrase_length - 0.95)) {
+                        //report += phase.toFixed(2).padStart(8, ' ') + "=" + to_play[phrase_length].get(phase).toString().padEnd(6, ' ')
+                        if (phrase.volume > 0 && attack.sym) {
+                            phrase.instrument.play(attack.sym, phrase.volume)
+                            // console.log(`rhythms[${active.rhythm_id}].episodes[${active.episode_id}].phrases[${phrase_id}].attacks[phase=${attack.phase}] -> playing`)
                         }
+                        attack.played = pos
                     }
                 }
             }
             //console.log(report)
         }
+
+        const elapsed_atacks = []
+        let changed = false
+        for (const [attack, {playing_start}] of playing_attacks) {
+            const elapsed = now - playing_start
+            if (elapsed < 0) continue
+            changed = true
+            if (elapsed > max_elapsed) {
+                elapsed_atacks.push(attack)
+            } else {
+                attack.power = 4 * Math.exp(-elapsed * 0.01)
+                attack.self_shift = 0.03 * Math.exp(-elapsed * 0.01) * Math.sin(elapsed * 0.01 * Math.PI * 2)
+            }
+        }
+        elapsed_atacks.forEach(attack => remove_attack(attack))
+
+        if (changed) {
+            playing_attacks = playing_attacks
+        }
+
+        if (playing_attacks.size > 0) {
+            request_animation()
+        }
+
+    }
+
+    
+    function add_attack(attack, playing_start, episode_id, phrase_id, part_id) {
+        playing_attacks.set(attack, {playing_start, episode_id, phrase_id, part_id})
+        playing_attacks = playing_attacks
+    }
+
+    function remove_attack(attack) {
+        playing_attacks.delete(attack)
+        playing_attacks = playing_attacks
+    }
+
+    function get_attacks_by_episode(playing_attacks, episode_id) {
+        const result = new Map()
+        for( const [attack, entry] of playing_attacks) {
+            if (entry.episode_id == episode_id) {
+                result.set(attack, entry)
+            }
+        }
+        return result
+    }
+
+
+    $: process_pointer(pointer)
+
+    function process_pointer(pointer) {
+        if (pointer.phase == undefined) return
+        const rhythm = rhythms[active.rhythm_id]
+        const episode = rhythm.episodes[active.episode_id]
+        const phrase = episode.phrases[pointer.phrase_id]
+        const attacks = phrase.get_attacks(pointer.part_id)
+        const now = performance.now()
+
+        for (const attack of attacks) {
+            if ((pointer.prev_phase != undefined && pointer.prev_phase < attack.phase && pointer.phase >= attack.phase)
+                || (pointer.prev_phase == undefined && Math.abs(pointer.phase - attack.phase) < 0.4)) {
+                if (phrase.volume > 0) {
+                    phrase.instrument.play(attack.sym, phrase.volume)
+                }
+                add_attack(attack, now, active.episode_id, pointer.phrase_id, pointer.part_id)
+                // console.log(pulse.phase, pulse.sym, now)
+            }
+        }
         
+        if (playing_attacks.size > 0) {
+            request_animation()
+        }
     }
 
     function flush_started(reset_phase = true) {
@@ -423,7 +509,7 @@
             started.ts = 0
             flush_started()
         } else {
-            window.requestAnimationFrame(process)
+            request_animation()
             started.ts = performance.now() - 10
         }
     }
@@ -498,15 +584,21 @@
         setTimeout(() => { volume_visible = false}, 300)
     }
 
-    let pointer = {}
+    let pointer = new Pointer()
 
     function on_circle_touch(e, episode_id) {
-        const {phrase_id, part_id, phase, vertical_offset} = e.detail
-        pointer = { episode_id, phrase_id, part_id, phase, vertical_offset }
+        const {start, phrase_id, part_id, phase, vertical_offset} = e.detail
+        if (start) {
+            pointer.start(episode_id, phrase_id, part_id, phase, vertical_offset)
+        } else {
+            pointer.move_to(phase, vertical_offset)
+        }
+        pointer = pointer
     }
-
+    
     function on_cirle_finish_touch(e) {
-        pointer = {}
+        pointer.stop()
+        pointer = pointer
     }
 
     function clamp(x, l1, l2) {
@@ -591,6 +683,7 @@ article {
             phase={active.phase}
             playing={started.ts != 0}
             pointer={pointer.episode_id == active.episode_id ? pointer : {}}
+            playing_attacks={get_attacks_by_episode(playing_attacks, active.episode_id)}
             on:touch={(e) => on_circle_touch(e, active.episode_id)}
             on:press={(e) => dot_toggle(e, active.episode_id)} 
             on:swipeend={on_cirle_swipeend}

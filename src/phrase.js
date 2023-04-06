@@ -1,10 +1,24 @@
 import Pulse from "./pulse.js"
+import Attack from "./attack.js"
 
 export default class Phrase {
     constructor(instrument, parts, volume = 1.0) {
         this.instrument = instrument
         this.parts = parts
         this.volume = volume
+        this.attacks = parts.map(pulses => pulses.filter(pulse => pulse.sym).map(pulse => Attack.from_pulse(pulse)))
+    }
+
+    get_attacks(part_id) {
+        if (part_id == undefined) {
+            return this.attacks.flat()
+        }
+        return this.attacks[part_id]
+    }
+
+    set_pulse(part_id, pulse_id, new_sym) {
+        this.parts[part_id][pulse_id].sym = new_sym
+        this.attacks = this.parts.map(pulses => pulses.filter(pulse => pulse.sym).map(pulse => Attack.from_pulse(pulse)))
     }
 
     store() {

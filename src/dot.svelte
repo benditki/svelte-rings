@@ -16,6 +16,7 @@
     export let pulse_color = "var(--theme-fg)"
     export let outline_color = "var(--theme-bg-more)"
     export let flash_color = undefined
+    export let debug = undefined
 
     export let next_phase = undefined
     export let next_dot_shift = 0
@@ -74,7 +75,7 @@
         }
     }
 
-    function stroke_width() {
+    function stroke_width(size) {
         return size * 0.15
     }
 </script>
@@ -93,10 +94,10 @@
     {#if sym}
     <g class="sym" transform={sym_trans(circular, radius, dot_shift)}>
         <path fill={pulse_color} d={shape(sym, size)}
-            stroke={outline_color} stroke-width={stroke_width()} data-debug={JSON.stringify({flash_color})}/>
+            stroke={outline_color} stroke-width={stroke_width(size)} data-debug={JSON.stringify({pulse_color, debug})}/>
         {#if flash_color}
         <path fill="none" d={shape(sym, size * 0.55)}
-            stroke={flash_color} stroke-width={stroke_width()}/>
+            stroke={flash_color} stroke-width={stroke_width(size)}/>
         {/if}
     </g>
     {/if}

@@ -4,7 +4,6 @@ export default class Pulse {
     constructor(phase, sym = null) {
         this.phase = phase
         this.sym = sym
-        this.played = null
     }
 
     store() {

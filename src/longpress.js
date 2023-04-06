@@ -78,7 +78,7 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
                 }
             }
             if (state.dir) {
-                // dispatch("swipe", { dx: state.dx, dy: state.dy, dir: state.dir })
+                dispatch("swipe", { dx: state.dx, dy: state.dy, dir: state.dir })
             }
         }
     }
@@ -94,7 +94,7 @@ export function longpress(node, opts = { duration: 400, threshold: 10 }) {
                     dispatch('release')
                 }
             } else {
-                // dispatch("swipeend")
+                dispatch("swipeend")
             }
         }
         clear()

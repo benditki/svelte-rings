@@ -10,6 +10,7 @@
     const radius0 = 0.12
     const max_lift = 0.18
     const min_lift = 0.06
+    const min_lift_circular = 0.02
 
     export let instrument_order = Map()
     export let circular = true
@@ -18,12 +19,23 @@
     export let playing = false
     export let phase
     export let pointer
+    export let playing_attacks
 
 
     const pick = (obj, ...keys) => Object.fromEntries(
         keys.filter(key => key in obj).map(key => [key, obj[key]]));
 
-    function setup_parts(circular, instrument_order, episode, pointer) {
+    function get_attacks_by_part(playing_attacks, phrase_id, part_id) {
+        const result = []
+        for(const [attack, entry] of playing_attacks) {
+            if (entry.phrase_id == phrase_id && entry.part_id == part_id) {
+                result.push(attack)
+            }
+        }
+        return result
+    }
+
+    function setup_parts(circular, instrument_order, episode, pointer, playing_attacks) {
         const max_width = 1
         const active_width = circular ? 0.12 : 0.08
         const max_free_width = circular ? 1 : 0.2
@@ -53,7 +65,8 @@
             (res, phrase, phrase_id) => {
                 return res.concat(phrase.parts.map((pulses, part_id) => {
                     const pointer_on_part = pointer.phrase_id == phrase_id && pointer.part_id == part_id ? pointer : {}
-                    const attacks = attack_info(circular, playing, pulses, phrase.parts.length * period, phase, pointer_on_part)
+                    const combined_pulses = pulses.concat(get_attacks_by_part(playing_attacks, phrase_id, part_id))
+                    const attacks = attack_info(circular, playing, combined_pulses, phrase.parts.length * period, phase, pointer_on_part)
                     const radius = instrument_radius.get(phrase.instrument) + active_width * part_id
                     return { phrase, phrase_id, part_id, radius, pulses, attacks, pointer: pointer_on_part}
                 }))
@@ -61,7 +74,7 @@
             []).sort((a, b) => instrument_order.get(b.phrase.instrument) - instrument_order.get(a.phrase.instrument))
     }
 
-    $: parts = setup_parts(circular, instrument_order, episode, pointer)
+    $: parts = setup_parts(circular, instrument_order, episode, pointer, playing_attacks)
 
     function color(phrase, period, phase) {
         const beat_period = {9: 3, 12: 3, 16: 4, 18: 3}[period] || 4
@@ -72,12 +85,12 @@
     }
     function attack_info(circular, playing, pulses, period, phase, pointer) {
         const attacks = pulses
-            .filter(pulse => (!circular && pointer.phase != undefined) || pulse.sym)
+            .filter(pulse => (pulse.sym || pointer.phase != undefined && (!circular || in_limits(Math.abs(pointer.phase - pulse.phase), -0.49, 0.5))))
             .sort((pulse_a, pulse_b) => pulse_a.phase - pulse_b.phase)
             .map((pulse) => {
-                let power = undefined
-                let self_shift = 0
-                if (pulse.sym && playing) {
+                let {power, self_shift} = pulse
+                self_shift = self_shift || 0
+                if (power == undefined && pulse.sym && playing) {
                     const t = Math.max(0, (phase - pulse.phase) % period)
                     if (in_limits(t, -0.1, 0.6)) {
                         const amplitude = 0.03
@@ -98,8 +111,10 @@
                         } else {
                             lift = Math.min(max_lift, Math.max(min_lift, max_lift - pointer.vertical_offset*0.04))
                         }
-                        lift *= Math.exp(-y * 0.5)
+                    } else {
+                        lift = min_lift_circular
                     }
+                    lift *= Math.exp(-y * 0.5)
                     if (!pulse.sym && in_limits(y, -0.49, 0.5)) {
                         stub_sym = {sym: symbols.STUB}
                     }
@@ -141,14 +156,14 @@
         return {circular, radius}
     }
 
-    function on_touch(e, part, pulse, period, radius, width) {
+    function on_touch(e, part, pulse, period, radius, width, start = true) {
         const {x, y} = e.detail
         let point = e.target.ownerSVGElement.createSVGPoint()
         point.x = x
         point.y = y
         point = point.matrixTransform(e.target.getScreenCTM().inverse())
         const phase = pulse.phase + point.x * period
-        dispatch("touch", { phrase_id: part.phrase_id, part_id: part.part_id, phase, vertical_offset: (point.y - radius) / width })
+        dispatch("touch", { phrase_id: part.phrase_id, part_id: part.part_id, phase, vertical_offset: (point.y - radius) / width, start })
     }
 
     function dot_size(circular, attack) {
@@ -167,7 +182,7 @@
         phase={(pulse.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
         color={color(part.phrase, period, pulse.phase)}
         on:touch={(e) => on_touch(e, part, pulse, period, common_props(circular, part).radius, background_width(circular))}
-        on:move={(e) => on_touch(e, part, pulse, period, common_props(circular, part).radius, background_width(circular))}
+        on:move={(e) => on_touch(e, part, pulse, period, common_props(circular, part).radius, background_width(circular), false)}
         on:press={() => dispatch("press", { phrase_id: part.phrase_id, part_id: part.part_id, pulse_id })}
         on:swipe={(e) => dispatch("swipe", { phrase_id: part.phrase_id, part_id: part.part_id, pulse_id, ...e.detail })}
         on:swipeend on:finish_touch/>
@@ -217,7 +232,8 @@
             gap={circular?0.01:0.0035}
             phase={(attack.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
             sym={attack.sym == symbols.STUB ? symbols.DOT : attack.sym}
-            {...(attack.sym == symbols.STUB ? {pulse_color: alternate(part.phrase.instrument.color), outline_color: "var(--theme-fg)"} : {})}
+            pulse_color={attack.sym == symbols.STUB ? alternate(part.phrase.instrument.color) : "var(--theme-fg)"}
+            outline_color={attack.sym == symbols.STUB ? "var(--theme-fg)" : "var(--theme-bg-more)"}
             flash_color={attack.power ? adjust(part.phrase.instrument.color, attack.power): undefined}
             />
         {/each}

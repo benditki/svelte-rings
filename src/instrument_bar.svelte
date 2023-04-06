@@ -83,7 +83,6 @@ function shift(presented, presented_id, x_shift) {
                 <Dot {...(presented.index != -1 ? presented_dot : hidden_dot)} color={presented.instrument.color} sym={presented.instrument.sym_list[0]}
                     on:touch={() => on_touch(presented)}
                     on:longpress={() => on_longpress(presented)}
-                    on:release={() => on_release(presented)}
                     on:swipe={(e) => on_swipe(presented, presented_id, e.detail)}
                     on:swipeend={(e) => on_swipeend(presented, presented_id)}/>
                 {#if presented.index == -1}
