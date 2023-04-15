@@ -1,6 +1,6 @@
 <script>
 
-    const VERSION = "0.2.0"
+    const VERSION = "0.3.0"
 
     if (localStorage.getItem("version") != VERSION) {
         localStorage.clear()
@@ -22,7 +22,7 @@
     import EpisodeBar from "./episode_bar.svelte"
     import InstrumentBar from "./instrument_bar.svelte"
     import BpmSelect from "./bpm_select.svelte"
-    import PlayButton from "./play_button.svelte" 
+    import PlayButton from "./play_button.svelte"
     import RhythmMenu from "./rhythm_menu.svelte"
     import VolumeView from "./volume_view.svelte"
 
@@ -56,10 +56,10 @@
         [ instruments.djembe,       0.3 ],
         [ instruments.bass,         0.6 ],
         [ instruments.kenkeni,      0.8 ],
-        [ instruments.sungban,      0.95 ],
+        [ instruments.sungban,      0.92 ],
         [ instruments.dundunba,     1 ],
-    ].sort((a, b) => a[1] - b[1]))        
-    
+    ].sort((a, b) => a[1] - b[1]))
+
     let rhythms = [
         new Rhythm("tatata", 16, [
             new Episode([
@@ -67,7 +67,6 @@
                 Phrase.fromPatterns(instruments.djembe,   ["s..s s.tt s..s s.tt"])
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.kenkeni,  ["..xx ..xx ..xx ..xx"]),
                 Phrase.fromPatterns(instruments.djembe,   ["bttt b.ss bttt b.ss"])
             ]),
         ]),
@@ -78,13 +77,9 @@
                 Phrase.fromPatterns(instruments.djembe,   ["s.b .tt s.b s.b stt s.b"])
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x.. x.. x.. x.. x.. x.."]),
-                Phrase.fromPatterns(instruments.bass,     ["d.d .d. d.d d.d .s. s.d"]),
                 Phrase.fromPatterns(instruments.djembe,   ["ss. tt. tt. ss. tt. tt."])
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x.. x.. x.. x.. x.. x.."]),
-                Phrase.fromPatterns(instruments.bass,     ["d.d .d. d.d d.d .s. s.d"]),
                 Phrase.fromPatterns(instruments.kenkeni,  ["xx. ... xx. ... xx. ..."]),
                 Phrase.fromPatterns(instruments.djembe,   ["s.s btt bs. s.s btt bs."])
             ]),
@@ -96,14 +91,10 @@
                 Phrase.fromPatterns(instruments.djembe,   ["s.t ..b stt .s."])
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x.. ... x.. ..."]),
-                Phrase.fromPatterns(instruments.bass,     ["dks s.d ssk d.k"]),
                 Phrase.fromPatterns(instruments.djembe,   ["b.t tts b.t .s."])
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x.. ... x.. ..."]),
-                Phrase.fromPatterns(instruments.bass,     ["dks s.d ssk d.k"]),
-                Phrase.fromPatterns(instruments.djembe,   ["ss. t.. ss. .bs", ".s. ts. btt .tt"], 1.6)
+                Phrase.fromPatterns(instruments.djembe,   ["ss. t.. ss. .bs", ".s. ts. btt .tt"], 1.3)
             ]),
         ]),
         new Rhythm("djole", 16, [
@@ -111,23 +102,20 @@
                 Phrase.fromPatterns(instruments.shekere,  ["x... x... x... x..."]),
             ], 2),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... x... x... x..."]),
                 Phrase.fromPatterns(instruments.sungban,  ["c... x... c... x..."]),
                 Phrase.fromPatterns(instruments.dundunba, ["x... .... x.x. ...."]),
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... x... x... x..."]),
+                Phrase.fromPatterns(instruments.sungban,  []),
+                Phrase.fromPatterns(instruments.dundunba, []),
                 Phrase.fromPatterns(instruments.bass,     ["d... s... d.d. s..."]),
                 Phrase.fromPatterns(instruments.kenkeni,  ["..xx ..xx ..xx ..xx"]),
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... x... x... x..."]),
-                Phrase.fromPatterns(instruments.bass,     ["d... s... d.d. s..."]),
-                Phrase.fromPatterns(instruments.kenkeni,  ["..xx ..xx ..xx ..xx"], 0.5),
                 Phrase.fromPatterns(instruments.djembe,   ["tttt b... t.t. b..."]),
             ], 8),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... x... x... x..."]),
+                Phrase.fromPatterns(instruments.kenkeni,  []),
                 Phrase.fromPatterns(instruments.bass,     ["d.kk s.kk d.dk s.kk"]),
                 Phrase.fromPatterns(instruments.djembe,   ["ttst tstt stts ttst", "tstt s.ss ttst tss."], 1.2),
             ]),
@@ -138,46 +126,61 @@
                 Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
             ], 2),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
                 Phrase.fromPatterns(instruments.sungban,  [".... .... ..x. x..."]),
                 Phrase.fromPatterns(instruments.dundunba, ["x... ..x. x... ..x."]),
+                Phrase.fromPatterns(instruments.kenkeni,  []),
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
+                Phrase.fromPatterns(instruments.sungban,  []),
+                Phrase.fromPatterns(instruments.dundunba, []),
                 Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
                 Phrase.fromPatterns(instruments.bass,     ["d... ..d. d.s. s.d."]),
             ]),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
-                Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
-                Phrase.fromPatterns(instruments.bass,     ["d... ..d. d.s. s.d."]),
                 Phrase.fromPatterns(instruments.djembe,   ["b.tt ..st t.bs .bs."]),
             ], 8),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
-                Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
-                Phrase.fromPatterns(instruments.bass,     ["d... ..d. d.s. s.d."]),
                 Phrase.fromPatterns(instruments.djembe,   ["b.ss .bss b.ss ttss", "b.ss .bss b.s. ttss"]),
             ], 2),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
-                Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
-                Phrase.fromPatterns(instruments.bass,     ["d... ..d. d.s. s.d."]),
                 Phrase.fromPatterns(instruments.djembe,   ["ttst tstt s.ts tts.", "ttst tstt s.t. tts."]),
             ], 2),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
-                Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
-                Phrase.fromPatterns(instruments.bass,     ["d... ..d. d.s. s.d."]),
                 Phrase.fromPatterns(instruments.djembe,   ["bsss ttss s... ss..", "bsss ttss s.s. sstt"]),
             ], 2),
             new Episode([
-                Phrase.fromPatterns(instruments.shekere,  ["x... .... x... ...."]),
-                Phrase.fromPatterns(instruments.kenkeni,  ["x... x... x... x..."]),
-                Phrase.fromPatterns(instruments.bass,     ["d... ..d. d.s. s.d."]),
                 Phrase.fromPatterns(instruments.djembe,   ["..ss .s.t t.s. ss.t", "t.ss .s.t t.s. sstt"]),
             ], 2),
-        ])
+        ]),
+        new Rhythm("Moribayasa", 16, [
+            new Episode([
+                Phrase.fromPatterns(instruments.shekere,  ["x... x... x... x..."]),
+                Phrase.fromPatterns(instruments.sungban,  ["x... c... c.x. x.x."]),
+                Phrase.fromPatterns(instruments.dundunba, ["x... ..x. x... ..x."]),
+            ]),
+            new Episode([
+                Phrase.fromPatterns(instruments.djembe,   ["b.tt b.s. b.tt b.s."]),
+            ]),
+            new Episode([
+                Phrase.fromPatterns(instruments.djembe,   ["s.bs s.tt s.bs s.tt"]),
+            ]),
+        ]),
+        new Rhythm("Soko", 12, [
+            new Episode([
+                Phrase.fromPatterns(instruments.shekere,  ["x.. ... x.. ..."]),
+                Phrase.fromPatterns(instruments.bass,     ["s.. c.. c.d s.d"]),
+            ], 4),
+            new Episode([
+                Phrase.fromPatterns(instruments.bass,     ["s.. c.d s.d s.d", "s.. c.. c.d s.d"]),
+            ], 2),
+            new Episode([
+                Phrase.fromPatterns(instruments.bass,     ["s.. c.d ssd ssd", "s.. kk. c.d ssd"]),
+            ]),
+            new Episode([
+                Phrase.fromPatterns(instruments.djembe,   ["st. b.s s.t tbs", "st. b.s s.t .ss"])
+            ]),
+        ]),
+
 
     ]
 
@@ -209,7 +212,7 @@
             if (name in instruments) {
                 instruments[name].sym_list = loaded[name].map(desc => symbols[desc])
             }
-        } 
+        }
     }
 
     function load_rhythms() {
@@ -233,7 +236,7 @@
     load_instruments()
     load_rhythms()
 
-    
+
 
     function dot_toggle (e, episode_id) {
         if (rhythms[active.rhythm_id].blocked) return
@@ -244,7 +247,7 @@
         const front_sym = phrase.instrument.sym_list[0]
         const new_sym = old_sym == front_sym ? null : front_sym
         phrase.set_pulse(part_id, pulse_id, new_sym)
-            
+
         // console.log(`rhythms[${active.rhythm_id}].episodes[${episode_id}].phrases[${phrase_id}].parts[${part_id}].pulses[${pulse_id}].sym: ${String(old_sym)} -> ${String(new_sym)}`)
 
         if (!started.ts && new_sym) {
@@ -307,7 +310,7 @@
         const episode = rhythms[active.rhythm_id].episodes[active.episode_id]
         const {phrases, disabled_phrases} = episode
         let instrument_phrases = disabled_phrases.filter(p => p.instrument == instrument)
-        
+
         if (instrument_phrases.length > 0) {
             episode.disabled_phrases = disabled_phrases.filter(p => p.instrument != instrument)
         } else {
@@ -396,11 +399,13 @@
             active.pos = pos
             active.phase = phase
 
-            const episode = rhythm.episodes[active.episode_id]
+            const involved_episodes = rhythm.episodes.slice(0, active.episode_id + 1)
+            const instrument_last_phrase =new Map(involved_episodes.flatMap((episode => episode.phrases.map(phrase => [phrase.instrument, phrase]))))
+            const playing_phrases = Array.from(instrument_last_phrase.values())
 
             //let report = now.toFixed(2).padEnd(16, ' ') + (now - started.ts).toFixed(2).padEnd(8, ' ') + pos.toFixed(2).padStart(8, ' ')
-            
-            for (const [phrase_id, phrase]  of episode.phrases.entries()) {
+
+            for (const phrase of playing_phrases) {
                 const phrase_length = phrase.parts.length * rhythm.period
                 for (const attack of phrase.get_attacks()) {
                     if (in_limits((phase - attack.phase) % phrase_length, -0.01, 0.5)
@@ -443,7 +448,7 @@
 
     }
 
-    
+
     function add_attack(attack, playing_start, episode_id, phrase_id, part_id) {
         playing_attacks.set(attack, {playing_start, episode_id, phrase_id, part_id})
         playing_attacks = playing_attacks
@@ -470,7 +475,7 @@
     function process_pointer(pointer) {
         if (pointer.phase == undefined) return
         const rhythm = rhythms[active.rhythm_id]
-        const episode = rhythm.episodes[active.episode_id]
+        const episode = rhythm.episodes[pointer.episode_id]
         const phrase = episode.phrases[pointer.phrase_id]
         const attacks = phrase.get_attacks(pointer.part_id)
         const now = performance.now()
@@ -481,11 +486,11 @@
                 if (phrase.volume > 0) {
                     phrase.instrument.play(attack.sym, phrase.volume)
                 }
-                add_attack(attack, now, active.episode_id, pointer.phrase_id, pointer.part_id)
+                add_attack(attack, now, pointer.episode_id, pointer.phrase_id, pointer.part_id)
                 // console.log(pulse.phase, pulse.sym, now)
             }
         }
-        
+
         if (playing_attacks.size > 0) {
             request_animation()
         }
@@ -586,8 +591,8 @@
 
     let pointer = new Pointer()
 
-    function on_circle_touch(e, episode_id) {
-        const {start, phrase_id, part_id, phase, vertical_offset} = e.detail
+    function on_circle_touch(e) {
+        const {start, episode_id, phrase_id, part_id, phase, vertical_offset} = e.detail
         if (start) {
             pointer.start(episode_id, phrase_id, part_id, phase, vertical_offset)
         } else {
@@ -595,7 +600,7 @@
         }
         pointer = pointer
     }
-    
+
     function on_cirle_finish_touch(e) {
         pointer.stop()
         pointer = pointer
@@ -606,11 +611,13 @@
     }
 
     function on_cirle_swipe(e) {
-        const {phrase_id, pulse_id, dx, dy, dir } = e.detail
+        const {episode_id, phrase_id, pulse_id, dx, dy, dir } = e.detail
         if (dir == 'y') {
+            const phrase = rhythms[active.rhythm_id].episodes[episode_id].phrases[phrase_id]
             volume_visible = true
-            current_volume = clamp(rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].volume - dy * 0.01, 0, 2)
-            rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].volume = current_volume
+            new_volume = clamp(phrase.volume - dy * 0.01, 0, 2)
+            phrase.volume = new_volume
+            rhythms = rhythms
         }
     }
 
@@ -623,17 +630,93 @@
 
     let debug_active = false
 
+    let layout_width
+    let layout_height
+    $: layout = calc_layout(layout_width, layout_height)
+
+    function calc_layout(layout_width, layout_height, settings = {}) {
+        if (!layout_width) return
+
+        const { vertical_margin = 8,
+            horizontal_margin = 4,
+            header_height = 52,
+            vertical_circle_to_main = 0.55,
+            max_vertical_layout_width = 680,
+            min_vertical_aspect_ratio = 1,
+            min_horizontal_aspect_ratio = 0.4,
+            title_height = 28,
+            max_width = 1100,
+            parts_to_list = 0.77,
+            parts_top_bottom_margin = 4,
+            button_height = 32,
+            button_width = 48,
+            button_gap = button_width/2,
+            button_icon_size_to_height = 0.8 } = settings
+
+        const section = (top, bottom, left = 0, right = layout_width,
+            height = bottom - top, middle = (top + bottom) / 2,
+            width = right - left, center = (left + right) / 2) => (
+            {top, bottom, height, middle,
+                left, right, width, center})
+
+        const vertical = layout_width <= max_vertical_layout_width && layout_height > layout_width * min_vertical_aspect_ratio
+        const max_horizontal_width = Math.min(layout_height / min_horizontal_aspect_ratio, layout_width, max_width)
+        const expanded_horizontal_margin = vertical ? horizontal_margin : Math.max(horizontal_margin, (layout_width - max_horizontal_width) / 2)
+        const inner = section(vertical_margin, layout_height - vertical_margin, expanded_horizontal_margin, layout_width - expanded_horizontal_margin)
+
+        let header, circle, list
+        if (vertical) {
+            header = section(inner.top, header_height, inner.left, inner.right)
+            const circle_height = Math.min((inner.height - header.height) * vertical_circle_to_main, inner.width * 0.8)
+            circle = section(header.bottom, header.bottom + circle_height, inner.left, inner.right)
+            list = section(circle.bottom, inner.bottom, inner.left, inner.right)
+        } else {
+            header = section(inner.top, header_height, inner.left, inner.left + inner.width * 0.4)
+            circle = section(header.bottom, inner.bottom, inner.left, header.right)
+            list = section(inner.top, inner.bottom, circle.right, inner.right - button_width)
+        }
+        circle.size = Math.min(circle.width, circle.height) * 0.95
+
+        const title = section(
+            header.middle - title_height / 2, header.middle + title_height / 2,
+            header.center - title_height * 3, header.center + title_height * 3)
+
+        const parts = section(list.top + parts_top_bottom_margin, list.bottom - parts_top_bottom_margin, list.center - list.width * parts_to_list / 2, list.center + list.width * parts_to_list / 2)
+
+        const buttons = section(0, layout_height, layout_width - button_width, layout_width)
+        const menu_button = section(header.middle - button_height/2, header.middle + button_height/2, buttons.left, buttons.right)
+        menu_button.size = menu_button.height * button_icon_size_to_height
+        const play_button = section(menu_button.bottom + button_gap, menu_button.bottom + button_gap + button_height, buttons.left, buttons.right)
+        play_button.size = play_button.height * button_icon_size_to_height
+        const bpm_button = section(play_button.bottom + button_gap, play_button.bottom + button_gap + button_height, buttons.left, buttons.right)
+        bpm_button.size = bpm_button.height * button_icon_size_to_height
+        const bpm_range = section(buttons.top + button_gap, buttons.bottom - button_gap, buttons.left - button_width, buttons.left - 4)
+        return {header, circle, list, title, width: layout_width, height: layout_height, vertical, parts, buttons, menu_button, play_button, bpm_button, bpm_range}
+    }
+
 </script>
 
 <style>
 main {
-    padding: 8px 4px;
+    margin: 8px 4px;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     min-height: 10px;
-    background-color: var(--theme-bg);
+    border: 3px solid var(--theme-fg);
 }
+
+.title {
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    font-size: 28px;
+    line-height: 28px;
+    font-family: "Scranji";
+    color: var(--theme-fg);
+    text-transform: uppercase;
+}
+
 main > * {
     flex-shrink: 0;
 }
@@ -645,7 +728,6 @@ article {
     display: flex;
     flex-direction: row;
     justify-content: center;
-    border: 3px solid var(--theme-fg);
 }
 
 .instrument_container {
@@ -656,7 +738,7 @@ article {
 }
 .version {
     position: fixed;
-    right: 0;
+    right: 13%;
     top: 0;
     padding: 1px;
     font-family: monospace;
@@ -667,62 +749,55 @@ article {
 .version.debug {
     text-shadow: 0px 0px 4px cyan;
 }
+
 </style>
 
-<DebugLayer active={debug_active}/>
+<svelte:window bind:innerWidth={layout_width} bind:innerHeight={layout_height}/>
 
-<div class="version" class:debug={debug_active} on:click={() => { debug_active = !debug_active }}>v{VERSION}</div>
+<DebugLayer active={debug_active} {layout}/>
 
+{#if layout}
 <main>
-    {#each [true, false] as circular, article_id}
-    <article style={`order: ${article_id}`}>
+    {#each [layout.title] as {left, top, width, height}}
+    <h1 class="title" style="left: {left}px; top: {top}px; width: {width}px; height: {height}px">{rhythms[active.rhythm_id].name}</h1>
+    {/each}
+    <article>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
-        <Circle {circular} {instrument_order}
-            episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
+        <Circle {instrument_order} {layout}
+            episodes={rhythms[active.rhythm_id].episodes}
+            active_episode_id={active.episode_id}
             period={rhythms[active.rhythm_id].period}
             phase={active.phase}
             playing={started.ts != 0}
-            pointer={pointer.episode_id == active.episode_id ? pointer : {}}
-            playing_attacks={get_attacks_by_episode(playing_attacks, active.episode_id)}
-            on:touch={(e) => on_circle_touch(e, active.episode_id)}
-            on:press={(e) => dot_toggle(e, active.episode_id)} 
+            {pointer}
+            {playing_attacks}
+            bind:selected_episodes={selected_episodes}
+            on:touch={on_circle_touch}
+            on:press={dot_toggle}
             on:swipeend={on_cirle_swipeend}
             on:finish_touch={on_cirle_finish_touch}
-            on:swipe={on_cirle_swipe}/>
-        {#if article_id == 0}
-        <div class="centered" style="position: absolute; width: 100%; bottom: 0">
-            <BpmSelect bind:value={bpm} on:change={() => flush_started(false)}/>
-        </div>
-        {/if}
+            on:swipe={on_cirle_swipe}
+            on:change={(e) => activate_episode(e.detail.episode_id)}/>
     </article>
-    {/each}
 
-    <div class="row" style="display: flex; justify-content: space-between; align-items: center">
-    <EpisodeBar episodes={rhythms[active.rhythm_id].episodes}
-        active={active.episode_id}
-        blocked={rhythms[active.rhythm_id].blocked}
-        round={started.ts ? active.phase / rhythms[active.rhythm_id].round_duration(active.episode_id) : null}
-        bind:selected={selected_episodes}
-        on:change={(e)=> activate_episode(e.detail.episode_id)}
-        on:add={()=> clone_episode()}
-        on:del={()=> del_episodes()}
-        on:repeat={(e)=> set_repeat(e.detail.x)}
-        on:on={()=>set_off(false)}
-        on:off={()=>set_off(true)}
-        on:solo={()=>set_solo()}/>
-
-    <PlayButton playing={started.ts != 0}
-        on:toggle={() => toggle_play()}/>
-    
-    <RhythmMenu {rhythms} active={active.rhythm_id}
-    on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
-    on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
-    on:new={(e) => create_rhythm(e.detail.period)}
-    on:del={()=> del_rhythm()}
-    on:clone={() => clone_rhythm()}/>
+    <div class="edge_button" style="position: fixed; width: {layout.bpm_button.width}px; top: {layout.bpm_button.top}px; left: {layout.bpm_button.left}px; height: {layout.bpm_button.height}px">
+        <BpmSelect {layout} bind:value={bpm} on:change={() => flush_started(false)}/>
     </div>
+
+    <div class="edge_button" style="position: fixed; width: {layout.play_button.width}px; top: {layout.play_button.top}px; left: {layout.play_button.left}px; height: {layout.play_button.height}px">
+        <PlayButton size={layout.play_button.height} playing={started.ts != 0}
+            on:toggle={() => toggle_play()}/>
+    </div>
+
+    <RhythmMenu {layout} {rhythms} active={active.rhythm_id}
+        on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
+        on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
+        on:new={(e) => create_rhythm(e.detail.period)}
+        on:del={()=> del_rhythm()}
+        on:clone={() => clone_rhythm()}/>
 </main>
-<div class="instrument_container">
+{/if}
+<!-- <div class="instrument_container">
     <InstrumentBar
     {instrument_order}
     {instruments}
@@ -732,4 +807,6 @@ article {
     on:add={(e) => add_instrument(e.detail.instrument)}
     on:disable={(e) => disable_instrument(e.detail.instrument)}
     on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
-</div>
+</div> -->
+
+<div class="version" class:debug={debug_active} on:click={() => { debug_active = !debug_active }}>v{VERSION}</div>

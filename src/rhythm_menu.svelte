@@ -2,6 +2,7 @@
     import { createEventDispatcher, onMount } from 'svelte'
 	const dispatch = createEventDispatcher()
 
+    export let layout
     export let rhythms
     export let active
     export let open = false
@@ -36,7 +37,7 @@ button {
 
 .name {
     color: var(--theme-fg);
-    font-weight: bold;
+    font-family: "Scranji";
     font-size: 130%;
     background-color: var(--theme-mid);
     padding: 3pt 8pt;
@@ -56,6 +57,7 @@ button {
 .list {
     margin-top: 12px;
     flex-direction: column-reverse;
+    overflow-x: scroll;
 }
 
 .rename {
@@ -90,18 +92,14 @@ i:before {
     line-height: 32px;
 }
 
-span.round {
-    background-color: var(--theme-fg);
-    display: inline-block;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    text-align: center;
-    line-height: 36px;
-}
 .round i {
     color: var(--theme-bg);
     margin: 0;
+    line-height: 22px;
+}
+.round i:before {
+    line-height: 22px;
+    font-size: 28px;
 }
 h1 + i, h1 + i:before {
     margin: 0 0 0 4px;
@@ -154,11 +152,6 @@ h1 + i, h1 + i:before {
 {#if open}
 <div class="col menu">
     <header>
-        <div class="row icons">
-            <button on:click={() => open = false}>
-                <span class="round"><i class="icon-cross"></i></span>
-            </button>
-        </div>
         <div class="row rename">
             <h1><input type=text value={rhythms[active].name}
                 on:input={on_name_edit}></h1>
@@ -206,6 +199,19 @@ h1 + i, h1 + i:before {
     </div>
 </div>
 {/if}
-<header on:click={() => open = true}>
-    <span class="name">{rhythms[active].name}</span>
-</header>
+
+{#if layout}
+<div on:click={() => open = !open} class="edge_button" style="position: fixed; z-index: 12; width: {layout.menu_button.width}px; top: {layout.menu_button.top}px; left: {layout.menu_button.left}px; height: {layout.menu_button.height}px">
+    <svg xmlns="http://www.w3.org/2000/svg" height="{layout.menu_button.size}px" width="{layout.menu_button.size}px" viewBox="-0.5 -0.5 1 1" pointer-events="none">
+        {#if open}
+        <line x1=-0.2 x2=0.2 y1=-0.2 y2=0.2 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        <line x1=0.2 x2=-0.2 y1=-0.2 y2=0.2 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        {:else}
+        <line x1=-0.1 x2=0.4 y1=-0.3 y2=-0.3 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        <line x1=-0.25 x2=0.25 y1=0 y2=0 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        <line x1=-0.4 x2=0.1 y1=0.3 y2=0.3 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        {/if}
+    </svg>
+</div>
+
+{/if}

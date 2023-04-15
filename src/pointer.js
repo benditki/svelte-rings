@@ -4,7 +4,7 @@ export default class Pointer {
     constructor() {
         this.tracks = []
     }
-    
+
     start(episode_id, phrase_id, part_id, phase, vertical_offset) {
         this.episode_id = episode_id
         this.phrase_id = phrase_id
@@ -15,7 +15,7 @@ export default class Pointer {
     get phase() {
         return this.get_phase_at(-1)
     }
-    
+
     get prev_phase() {
         return this.get_phase_at(-2)
     }
@@ -27,7 +27,7 @@ export default class Pointer {
 
     get vertical_offset() {
         const track = this.tracks.at(-1)
-        return track && track.vertical_offset        
+        return track && track.vertical_offset
     }
 
     move_to(phase, vertical_offset) {

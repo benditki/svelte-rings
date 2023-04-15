@@ -2,10 +2,11 @@
     import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 
+    export let size = 40
     export let playing = false
 </script>
-<svg height="40px" viewBox="-0.5 -0.5 1 1">
-    <g class:playing={playing != 0} transform="scale(1.2)"
+<svg xmlns="http://www.w3.org/2000/svg" height="{size}px" width="{size}px" viewBox="-0.5 -0.5 1 1">
+    <g class:playing={playing != 0}
         on:click={() => dispatch("toggle")}>
         <circle r=0.3 fill="none" pointer-events="fill"/>
         <polygon class='triag' points="-0.17,-0.3 0.33,0 -0.17,0.3 "/>
@@ -19,10 +20,10 @@
     .triag, .quad {
       transition: all 0.4s ease-in-out;
       transform: translateY(0);
-      stroke-width: 0.08px;
+      stroke-width: 0.1px;
       stroke-linecap: butt;
       stroke-linejoin: miter;
-      stroke: var(--theme-fg);
+      stroke: var(--theme-bg);
       fill: none;
     }
     .triag {
@@ -33,7 +34,7 @@
       stroke-dasharray: 1.8 10.8;
       stroke-dashoffset: 3.4;
     }
-    
+
     .playing .triag {
       stroke-dashoffset: -3.4;
     }
@@ -41,7 +42,6 @@
       stroke-dashoffset: 0.0;
     }
     .playing .triag, .playing .quad {
-      stroke: var(--theme-fg);
       animation: nudge 0.4s ease-in-out;
     }
     @keyframes nudge {

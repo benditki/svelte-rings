@@ -2,7 +2,7 @@
     import { longpress } from './longpress.js'
     import { adjust, emphasize} from "./colors.js"
     import { createEventDispatcher } from 'svelte'
-    import ProgressCircle from "./progress_circle.svelte";
+    import ProgressCircle from "./progress_circle.svelte"
 
 	const dispatch = createEventDispatcher()
 
@@ -55,7 +55,7 @@
                 rounds={episode.repeat}
                 width={button_size}px
                 height={button_size}px><div class="label" class:active={episode_id == active}>{episode_id + 1}</div></ProgressCircle>
-    
+
             </button>
         {/each}
         {#if !blocked}

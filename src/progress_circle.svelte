@@ -1,8 +1,9 @@
 <script>
-    export let progress = 0.25
+    export let progress = undefined
     export let rounds = 3
     export let fill = "var(--theme-bg-alt)"
     export let color = "var(--theme-fg)"
+    export let text_color = "var(--theme-fg)"
     export let text = "1"
     export let width = "100px"
     export let height = "100px"
@@ -28,18 +29,19 @@
     }
 
 </script>
-<div id="container" style="width:{width};height:{height}">
-    <svg id="background" viewBox="-0.5 -0.5 1.0 1.0">
+<!-- <div id="container" style="width:{width};height:{height}"> -->
+    <svg id="background" viewBox="-0.5 -0.5 1.0 1.0" {width} {height}>
         <circle transform="rotate(270)" stroke="{progress != null ? fill : color}" pathLength=0.901 stroke-dasharray="{fillStrokeDasharray(rounds)}" ></circle>
-        {#if progress != null}
+        {#if progress != undefined}
         <circle transform="rotate({270 + 360 * (round_indicator_interval * rounds + round_indicator_gap)})" stroke="{color}" pathLength=0.901 stroke-dasharray="1" stroke-dashoffset={progressStrokeDashoffset(progress, rounds)}></circle>
         <circle transform="rotate(270)" stroke="{color}" pathLength=0.901 stroke-dasharray={strokeDasharray(rounds)} stroke-dashoffset={strokeDashoffset(rounds - progress)}></circle>
         {/if}
+        <text y=0.2 fill={text_color}>{text}</text>
     </svg>
-    <div id="foreground">
+    <!-- <div id="foreground">
         <slot></slot>
-    </div>
-</div>
+    </div> -->
+<!-- </div> -->
 <style>
     #container {
         position: relative;
@@ -55,11 +57,18 @@
         justify-content: center;
         align-items: center;
         width: 100%;
-        height: 100%;  
+        height: 100%;
     }
     circle {
         fill: none;
         stroke-width: 0.1;
         r: 0.45;
+    }
+
+    text {
+        font-size: 0.5px;
+        font-weight: bold;
+        text-anchor: middle;
+        line-height: 0.5px;
     }
 </style>
