@@ -2,9 +2,9 @@
     --theme-bg-more: rgb(240, 229, 210);
     --theme-bg: rgb(238, 212, 165);
     --theme-bg-less: rgb(216, 194, 152);
-    --theme-bg-alt: rgb(221, 180, 103);
-    --theme-mid: rgb(209, 148, 33);
-    --theme-fg: rgb(59, 27, 7);
+    --theme-bg-alt: #d4ab5d;
+    --theme-mid: #d19421;
+    --theme-fg: #3b1b07;
     --theme-fg-alt: #af5308;
     --theme-accent: rgb(20, 99, 172);
 }
@@ -106,8 +106,8 @@ button:disabled {
 }
 
 .edge_button {
-    background-color: var(--theme-fg);
-    border:0.5px solid var(--theme-bg);
+    background-color: var(--theme-bg-alt);
+    border: 1px solid var(--theme-bg);
     border-right: none;
     width: 100%;
     height: 100%;

@@ -204,12 +204,12 @@ h1 + i, h1 + i:before {
 <div on:click={() => open = !open} class="edge_button" style="position: fixed; z-index: 12; width: {layout.menu_button.width}px; top: {layout.menu_button.top}px; left: {layout.menu_button.left}px; height: {layout.menu_button.height}px">
     <svg xmlns="http://www.w3.org/2000/svg" height="{layout.menu_button.size}px" width="{layout.menu_button.size}px" viewBox="-0.5 -0.5 1 1" pointer-events="none">
         {#if open}
-        <line x1=-0.2 x2=0.2 y1=-0.2 y2=0.2 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
-        <line x1=0.2 x2=-0.2 y1=-0.2 y2=0.2 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        <line x1=-0.2 x2=0.2 y1=-0.2 y2=0.2 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-fg)"/>
+        <line x1=0.2 x2=-0.2 y1=-0.2 y2=0.2 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-fg)"/>
         {:else}
-        <line x1=-0.1 x2=0.4 y1=-0.3 y2=-0.3 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
-        <line x1=-0.25 x2=0.25 y1=0 y2=0 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
-        <line x1=-0.4 x2=0.1 y1=0.3 y2=0.3 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-bg)"/>
+        <line x1=-0.1 x2=0.4 y1=-0.3 y2=-0.3 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-fg)"/>
+        <line x1=-0.25 x2=0.25 y1=0 y2=0 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-fg)"/>
+        <line x1=-0.4 x2=0.1 y1=0.3 y2=0.3 stroke-width=0.16 stroke-linecap="round" stroke="var(--theme-fg)"/>
         {/if}
     </svg>
 </div>

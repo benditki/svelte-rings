@@ -23,7 +23,7 @@
       stroke-width: 0.1px;
       stroke-linecap: butt;
       stroke-linejoin: miter;
-      stroke: var(--theme-bg);
+      stroke: var(--theme-fg);
       fill: none;
     }
     .triag {

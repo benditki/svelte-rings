@@ -40,7 +40,7 @@
         background: var(--theme-fg);
     }
     label {
-        font: 14px "Good Times", sans-serif;
+        font: 12px "Good Times", sans-serif;
         color: var(--theme-fg);
     }
     .active label {
@@ -52,14 +52,16 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
-        align-items: center;
+        align-items: end;
+        padding-right: 10%;
     }
     .container label {
-        color: var(--theme-bg);
+        color: var(--theme-fg);
+        font-size: 16px;
     }
     .container label.small {
-        font-size: 8px;
-        letter-spacing: 1px;
+        font-size: 7px;
+        letter-spacing: 2px;
     }
 </style>
 
