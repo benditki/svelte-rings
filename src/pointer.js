@@ -5,11 +5,24 @@ export default class Pointer {
         this.tracks = []
     }
 
-    start(episode_id, phrase_id, part_id, phase, vertical_offset) {
-        this.episode_id = episode_id
-        this.phrase_id = phrase_id
-        this.part_id = part_id
-        this.tracks = [{phase, vertical_offset}]
+    move_to(start, section, radius, episode_id, phrase_id, part_id, phase) {
+        // console.log("move_to", start, section, radius, episode_id, phrase_id, part_id, phase)
+
+        const track = {section, radius, episode_id, phrase_id, part_id, phase}
+
+        if (start) {
+            this.start = track
+            this.stop = undefined
+        }
+
+        this.tracks.push(track)
+        while(this.tracks.length > max_track_count) {
+            this.tracks.shift()
+        }
+    }
+
+    get last() {
+        return this.tracks.at(-1) ?? this.stop
     }
 
     get phase() {
@@ -21,23 +34,16 @@ export default class Pointer {
     }
 
     get_phase_at(index) {
-        const track = this.tracks.at(index)
-        return track && track.phase
+        return this.tracks.at(index)?.phase
     }
 
     get vertical_offset() {
-        const track = this.tracks.at(-1)
-        return track && track.vertical_offset
+        return 0
     }
 
-    move_to(phase, vertical_offset) {
-        this.tracks.push({phase, vertical_offset})
-        while(this.tracks.length > max_track_count) {
-            this.tracks.shift()
-        }
-    }
-
-    stop() {
+    release(cancel) {
+        this.stop = cancel ? undefined : this.tracks.at(-1)
         this.tracks = []
+        // console.log("release", cancel, this)
     }
 }

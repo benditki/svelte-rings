@@ -17,6 +17,7 @@
     import { in_limits } from "./utils.js"
     import sounds from "./sounds.js"
     import * as symbols from "./symbols"
+    import {arrange_episodes} from "./arrange.js"
 
     import Circle from "./circle.svelte"
     import EpisodeBar from "./episode_bar.svelte"
@@ -238,25 +239,6 @@
 
 
 
-    function dot_toggle (e, episode_id) {
-        if (rhythms[active.rhythm_id].blocked) return
-
-        const {phrase_id, part_id, pulse_id} = e.detail
-        const phrase = rhythms[active.rhythm_id].episodes[episode_id].phrases[phrase_id]
-        const old_sym = phrase.parts[part_id][pulse_id].sym
-        const front_sym = phrase.instrument.sym_list[0]
-        const new_sym = old_sym == front_sym ? null : front_sym
-        phrase.set_pulse(part_id, pulse_id, new_sym)
-
-        // console.log(`rhythms[${active.rhythm_id}].episodes[${episode_id}].phrases[${phrase_id}].parts[${part_id}].pulses[${pulse_id}].sym: ${String(old_sym)} -> ${String(new_sym)}`)
-
-        if (!started.ts && new_sym) {
-            phrase.instrument.play(new_sym, phrase.volume)
-        }
-
-        rhythms = rhythms
-    }
-
     function clone_episode() {
         if (rhythms[active.rhythm_id].blocked) return
 
@@ -473,11 +455,12 @@
     $: process_pointer(pointer)
 
     function process_pointer(pointer) {
-        if (pointer.phase == undefined) return
+        const {episode_id, phrase_id, part_id} = pointer.last ?? {}
+        if (episode_id == undefined || phrase_id == undefined || part_id == undefined) return
         const rhythm = rhythms[active.rhythm_id]
-        const episode = rhythm.episodes[pointer.episode_id]
-        const phrase = episode.phrases[pointer.phrase_id]
-        const attacks = phrase.get_attacks(pointer.part_id)
+        const episode = rhythm.episodes[episode_id]
+        const phrase = episode.phrases[phrase_id]
+        const attacks = phrase.get_attacks(part_id)
         const now = performance.now()
 
         for (const attack of attacks) {
@@ -486,7 +469,7 @@
                 if (phrase.volume > 0) {
                     phrase.instrument.play(attack.sym, phrase.volume)
                 }
-                add_attack(attack, now, pointer.episode_id, pointer.phrase_id, pointer.part_id)
+                add_attack(attack, now, episode_id, phrase_id, part_id)
                 // console.log(pulse.phase, pulse.sym, now)
             }
         }
@@ -494,6 +477,15 @@
         if (playing_attacks.size > 0) {
             request_animation()
         }
+    }
+
+    let roi
+    $: roi = {start_id: active.episode_id, end_id: active.episode_id + (started.ts ? 2 : 1)}
+
+    let episode_arrangement = {}
+    $: if (layout && episode_arrangement) {
+        const old_view = episode_arrangement.view || {start_id: 0, end_id: rhythms[active.rhythm_id].episodes.length}
+        episode_arrangement = arrange_episodes(rhythms[active.rhythm_id].period, rhythms[active.rhythm_id].episodes, instrument_order, layout.parts.height / layout.parts.width, active.episode_id, old_view, roi)
     }
 
     function flush_started(reset_phase = true) {
@@ -591,21 +583,6 @@
 
     let pointer = new Pointer()
 
-    function on_circle_touch(e) {
-        const {start, episode_id, phrase_id, part_id, phase, vertical_offset} = e.detail
-        if (start) {
-            pointer.start(episode_id, phrase_id, part_id, phase, vertical_offset)
-        } else {
-            pointer.move_to(phase, vertical_offset)
-        }
-        pointer = pointer
-    }
-
-    function on_cirle_finish_touch(e) {
-        pointer.stop()
-        pointer = pointer
-    }
-
     function clamp(x, l1, l2) {
         return x < l1 ? l1 : x > l2 ? l2 : x
     }
@@ -613,11 +590,10 @@
     function on_cirle_swipe(e) {
         const {episode_id, phrase_id, pulse_id, dx, dy, dir } = e.detail
         if (dir == 'y') {
-            const phrase = rhythms[active.rhythm_id].episodes[episode_id].phrases[phrase_id]
+            const {volume} = rhythms[active.rhythm_id].episodes[episode_id].phrases[phrase_id]
             volume_visible = true
-            new_volume = clamp(phrase.volume - dy * 0.01, 0, 2)
-            phrase.volume = new_volume
-            rhythms = rhythms
+            current_volume = clamp(volume - dy * 0.01, 0, 2)
+            rhythms[active.rhythm_id].episodes[episode_id].phrases[phrase_id].volume = current_volume
         }
     }
 
@@ -628,7 +604,7 @@
         rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].parts = parts
     }
 
-    let debug_active = false
+    let debug_active = true
 
     let layout_width
     let layout_height
@@ -691,7 +667,54 @@
         const bpm_button = section(play_button.bottom + button_gap, play_button.bottom + button_gap + button_height, buttons.left, buttons.right)
         bpm_button.size = bpm_button.height * button_icon_size_to_height
         const bpm_range = section(buttons.top + button_gap, buttons.bottom - button_gap, buttons.left - button_width, buttons.left - 4)
-        return {header, circle, list, title, width: layout_width, height: layout_height, vertical, parts, buttons, menu_button, play_button, bpm_button, bpm_range}
+
+        const parts_transform = `translate(${parts.left}, ${parts.top}) scale(${parts.width})`
+
+        return {header, circle, list, title, width: layout_width, height: layout_height, vertical, parts, buttons, menu_button, play_button, bpm_button, bpm_range, parts_transform}
+    }
+
+    function on_window_touch(e, start) {
+        if (e.changedTouches.length != 1) {
+            pointer.release(true)
+            pointer = pointer
+            return
+        }
+        const {pageX: x, pageY: y} = e.changedTouches[0]
+        update_pointer(x, y, start)
+    }
+
+    function on_window_touchend(e, canceled) {
+        pointer.release(canceled)
+        pointer = pointer
+    }
+
+    function update_pointer(x, y, is_start) {
+        if (!layout || !episode_arrangement) return
+
+        // console.log(x, layout.parts.left, layout.parts.right, y, layout.parts.top, layout.parts.bottom)
+
+        if (in_limits(x, layout.parts.left, layout.parts.right) &&
+            in_limits(y, layout.parts.top, layout.parts.bottom)) {
+            const section = "parts"
+            const radius = (y - layout.parts.top) / layout.parts.width
+            const arrangments = Array.from(episode_arrangement.episodes.values())
+            const episode_id = arrangments.findIndex(({start, end}) => in_limits(radius, start, end))
+            const view_start_id = (episode_arrangement?.view?.start_id ?? 0)
+            const pointer_episode_id = episode_id == -1 ? undefined : episode_id + view_start_id
+            const {phrase_arrangement, start: episode_start} = arrangments[episode_id] ?? {}
+            const phrase_id = phrase_arrangement?.findIndex(({start, end}) => in_limits(radius - episode_start, start, end))
+            const pointer_phrase_id = phrase_id == -1 ? undefined : phrase_id
+            const phrase_start = phrase_arrangement?.[phrase_id]?.start
+            const part_id = Math.floor(radius - episode_start - phrase_start) / episode_arrangement.part_space
+            const phase = (x - layout.parts.left) / layout.parts.width * rhythms[active.rhythm_id].period
+            const pointer_phase = pointer_phrase_id == undefined ? undefined : phase
+            pointer.move_to(is_start, section, radius, pointer_episode_id, pointer_phrase_id, part_id, phase, pointer_phase)
+            pointer = pointer
+            return
+        }
+
+        pointer.move_to(is_start, "outside")
+        pointer = pointer
     }
 
 </script>
@@ -752,9 +775,13 @@ article {
 
 </style>
 
-<svelte:window bind:innerWidth={layout_width} bind:innerHeight={layout_height}/>
+<svelte:window bind:innerWidth={layout_width} bind:innerHeight={layout_height}
+    on:touchstart={(e) => on_window_touch(e, true)}
+    on:touchmove={(e) => on_window_touch(e, false)}
+    on:touchend={(e) => on_window_touchend(e, false)}
+    on:touchcancel={(e) => on_window_touchend(e, true)}/>
 
-<DebugLayer active={debug_active} {layout}/>
+<DebugLayer active={debug_active} {layout} {pointer} {episode_arrangement} episodes={rhythms[active.rhythm_id].episodes}/>
 
 {#if layout}
 <main>
@@ -763,7 +790,7 @@ article {
     {/each}
     <article>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
-        <Circle {instrument_order} {layout}
+        <Circle {instrument_order} {layout} {episode_arrangement}
             episodes={rhythms[active.rhythm_id].episodes}
             active_episode_id={active.episode_id}
             period={rhythms[active.rhythm_id].period}
@@ -772,12 +799,10 @@ article {
             {pointer}
             {playing_attacks}
             bind:selected_episodes={selected_episodes}
-            on:touch={on_circle_touch}
-            on:press={dot_toggle}
             on:swipeend={on_cirle_swipeend}
-            on:finish_touch={on_cirle_finish_touch}
             on:swipe={on_cirle_swipe}
-            on:change={(e) => activate_episode(e.detail.episode_id)}/>
+            on:change={({detail: {episode_id}}) => activate_episode(episode_id)}
+            on:scroll_to={({detail: id}) => {roi = {start_id: id, end_id: id + 1}}}/>
     </article>
 
     <div class="edge_button" style="position: fixed; width: {layout.bpm_button.width}px; top: {layout.bpm_button.top}px; left: {layout.bpm_button.left}px; height: {layout.bpm_button.height}px">
