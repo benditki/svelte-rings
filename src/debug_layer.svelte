@@ -82,8 +82,11 @@
 
     const milli = (x) => (x * 1000).toFixed()
 
-</script>
+    function debug_xxx(episode_arrangement, instruments, phrase_id) {
+        return instruments[phrase_id].color
+    }
 
+</script>
 
 <svelte:window
     bind:innerWidth={width} bind:innerHeight={height}
@@ -125,9 +128,9 @@
     </g>
     {#if pointer?.start && layout && episode_arrangement}
     {@const {part_transform, phase_transform, part_space, pulse_delta, available_space} = episode_arrangement}
+    {#if pointer.start?.section == "parts"}
+    {@const {radius, episode_id, phrase_id, part_id, phase} = pointer.last}
     <g class=dots transform={layout.parts_transform}>
-        {#if pointer.start?.section == "parts"}
-        {@const {radius, episode_id, phrase_id, part_id, phase} = pointer.last}
         <text class=number x=0 y=-0.05>{milli(radius)}:{milli(phase)}</text>
         {#if episode_id != undefined}
             {@const {episode_transform, phrase_transform} = episode_arrangement.episode_transform(episode_id)}
@@ -156,8 +159,62 @@
         {:else}
             <rect {...rect(0, 0, 1, available_space, 0.01)} stroke="cyan" fill="none"/>
         {/if}
+    </g>
+    {/if}
+
+    {#if pointer.start?.section == "right" && episode_arrangement}
+    {@const {instruments} = episode_arrangement}
+    {@const {radius, episode_id, phrase_id, part_id, phase} = pointer.last}
+    {@const right_width = (layout.list.right - layout.parts.right) / layout.parts.width}
+    <g class=right transform={layout.parts_transform}>
+        <text class=number x=0 y=-0.05>{milli(radius)}</text>
+
+
+        {#each Array.from(episode_arrangement.episodes.values()) as {episode_id, phrase_arrangement}}
+        {@const {episode_transform, phrase_transform} = episode_arrangement.episode_transform(episode_id)}
+        <g transform={episode_transform}>
+        {#each phrase_arrangement as {start, end, height, own_phrase, part_zoom, empty_zoom, pointer_zoom}, phrase_id}
+        <g transform={phrase_transform(phrase_id)}>
+        <rect {...rect(0, 0, 1, height, 0.01)} fill={debug_xxx(episode_arrangement, instruments, phrase_id)}/>
+        <!-- <text class=number x=1 y=0>{milli(start)}</text> -->
+        <!-- <text class=number x=1 y={end - start}>{milli(end)}</text> -->
+        <!-- <text class=number x=1 y={height / 2}>{milli(own_phrase ? part_zoom : empty_zoom)}</text> -->
+        <text class=number x=1 y={height / 2}>{milli(pointer_zoom)}</text>
+        </g>
+        {/each}
+        </g>
+        {/each}
+
+
+        {#if episode_id != undefined}
+            {@const {episode_transform, phrase_transform} = episode_arrangement.episode_transform(episode_id)}
+            {@const {height: episode_height, phrase_arrangement} = episode_arrangement.episodes.get(episodes[episode_id])}
+            <g transform={episode_transform}>
+            {#if phrase_id != undefined}
+            <g transform={phrase_transform(phrase_id)}>
+            {#if part_id != undefined}
+            <g transform={part_transform(part_id)}>
+            <rect {...rect(1, -part_space/2, right_width, part_space, 0.01)} stroke="cyan" fill="none"/>
+            </g>
+            {:else}
+            <rect {...rect(1, 0, right_width, phrase_arrangement[phrase_id].height, 0.01)} stroke="cyan" fill="none"/>
+            <text class=number x=1 y=0>{milli(episode_arrangement.episodes.get(episodes[episode_id]).start + phrase_arrangement[phrase_id].start)}</text>
+            <text class=number x=1 y={phrase_arrangement[phrase_id].height}>{milli(episode_arrangement.episodes.get(episodes[episode_id]).start + phrase_arrangement[phrase_id].end)}</text>
+            {/if}
+            </g>
+            {:else}
+            <rect {...rect(1, 0, right_width, episode_height, 0.01)} stroke="cyan" fill="none"/>
+            <text class=number x=1 y=0>{milli(episode_arrangement.episodes.get(episodes[episode_id]).start)}</text>
+            <text class=number x=1 y={episode_arrangement.episodes.get(episodes[episode_id]).height}>{milli(episode_arrangement.episodes.get(episodes[episode_id]).end)}</text>
+            {/if}
+            </g>
+        {:else}
+            <rect {...rect(1, 0, right_width, available_space, 0.01)} stroke="cyan" fill="none"/>
         {/if}
     </g>
+    {/if}
+
+
     {/if}
 </svg>
 {/if}
@@ -209,7 +266,7 @@
     .layout circle {
         fill: none;
     }
-    .dots text.number {
+    .dots text.number, .right text.number {
         font-family: monospace;
         font-size: 0.045px;
         font-weight: bold;

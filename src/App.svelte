@@ -17,7 +17,7 @@
     import { in_limits } from "./utils.js"
     import sounds from "./sounds.js"
     import * as symbols from "./symbols"
-    import {arrange_episodes} from "./arrange.js"
+    import {arrange_episodes, arrange_pointer_episodes} from "./arrange.js"
 
     import Circle from "./circle.svelte"
     import EpisodeBar from "./episode_bar.svelte"
@@ -396,7 +396,8 @@
                         //report += phase.toFixed(2).padStart(8, ' ') + "=" + to_play[phrase_length].get(phase).toString().padEnd(6, ' ')
                         if (phrase.volume > 0 && attack.sym) {
                             phrase.instrument.play(attack.sym, phrase.volume)
-                            // console.log(`rhythms[${active.rhythm_id}].episodes[${active.episode_id}].phrases[${phrase_id}].attacks[phase=${attack.phase}] -> playing`)
+                            add_attack(attack, now, active.episode_id, 0 /*phrase_id*/, 0 /*part_id*/)
+                            // console.log(`rhythms[${active.rhythm_id}].episodes[${active.episode_id}] ${attack.phase} -> playing`)
                         }
                         attack.played = pos
                     }
@@ -410,12 +411,15 @@
         for (const [attack, {playing_start}] of playing_attacks) {
             const elapsed = now - playing_start
             if (elapsed < 0) continue
+
             changed = true
             if (elapsed > max_elapsed) {
                 elapsed_atacks.push(attack)
+                attack.power = undefined
+                attack.self_shift = undefined
             } else {
-                attack.power = 4 * Math.exp(-elapsed * 0.01)
-                attack.self_shift = 0.03 * Math.exp(-elapsed * 0.01) * Math.sin(elapsed * 0.01 * Math.PI * 2)
+                attack.power = 5 * Math.exp(-elapsed * 0.01)
+                attack.self_shift = 0.04 * Math.exp(-elapsed * 0.01) * Math.sin(elapsed * (0.006 - 0.005 * elapsed / max_elapsed) * Math.PI * 2)
             }
         }
         elapsed_atacks.forEach(attack => remove_attack(attack))
@@ -433,11 +437,13 @@
 
     function add_attack(attack, playing_start, episode_id, phrase_id, part_id) {
         playing_attacks.set(attack, {playing_start, episode_id, phrase_id, part_id})
+        console.log(`episodes[${episode_id}] ${attack.phase} -> playing count=${playing_attacks.size}`)
         playing_attacks = playing_attacks
     }
 
     function remove_attack(attack) {
         playing_attacks.delete(attack)
+        console.log(`${attack.phase} -> removed count=${playing_attacks.size}`)
         playing_attacks = playing_attacks
     }
 
@@ -483,10 +489,17 @@
     $: roi = {start_id: active.episode_id, end_id: active.episode_id + (started.ts ? 2 : 1)}
 
     let episode_arrangement = {}
-    $: if (layout && episode_arrangement) {
+    $: if (layout) {
         const old_view = episode_arrangement.view || {start_id: 0, end_id: rhythms[active.rhythm_id].episodes.length}
         episode_arrangement = arrange_episodes(rhythms[active.rhythm_id].period, rhythms[active.rhythm_id].episodes, instrument_order, layout.parts.height / layout.parts.width, active.episode_id, old_view, roi)
     }
+
+    let pointer_episode_arrangement = undefined
+    $: if(episode_arrangement && pointer.start?.section == "right") {
+        console.log(Array.from(pointer_episode_arrangement?.episodes?.values() ?? [])?.at(1)?.phrase_arrangement, Array.from(episode_arrangement.episodes.values()).at(1).phrase_arrangement)
+        pointer_episode_arrangement = arrange_pointer_episodes(pointer_episode_arrangement ?? episode_arrangement, pointer.last)
+    }
+
 
     function flush_started(reset_phase = true) {
         if (reset_phase) {
@@ -604,7 +617,7 @@
         rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].parts = parts
     }
 
-    let debug_active = true
+    let debug_active = false
 
     let layout_width
     let layout_height
@@ -617,11 +630,11 @@
             horizontal_margin = 4,
             header_height = 52,
             vertical_circle_to_main = 0.55,
-            max_vertical_layout_width = 680,
+            max_vertical_layout_width = 1000,
             min_vertical_aspect_ratio = 1,
             min_horizontal_aspect_ratio = 0.4,
             title_height = 28,
-            max_width = 1100,
+            max_width = 1400,
             parts_to_list = 0.77,
             parts_top_bottom_margin = 4,
             button_height = 32,
@@ -647,7 +660,7 @@
             circle = section(header.bottom, header.bottom + circle_height, inner.left, inner.right)
             list = section(circle.bottom, inner.bottom, inner.left, inner.right)
         } else {
-            header = section(inner.top, header_height, inner.left, inner.left + inner.width * 0.4)
+            header = section(inner.top, header_height, inner.left, inner.left + inner.width * 0.45)
             circle = section(header.bottom, inner.bottom, inner.left, header.right)
             list = section(inner.top, inner.bottom, circle.right, inner.right - button_width)
         }
@@ -693,9 +706,8 @@
 
         // console.log(x, layout.parts.left, layout.parts.right, y, layout.parts.top, layout.parts.bottom)
 
-        if (in_limits(x, layout.parts.left, layout.parts.right) &&
-            in_limits(y, layout.parts.top, layout.parts.bottom)) {
-            const section = "parts"
+        if (in_limits(y, layout.parts.top, layout.parts.bottom)) {
+            const section = in_limits(x, layout.parts.left, layout.parts.right) ? "parts" : x > layout.parts.right ? "right" : "left"
             const radius = (y - layout.parts.top) / layout.parts.width
             const arrangments = Array.from(episode_arrangement.episodes.values())
             const episode_id = arrangments.findIndex(({start, end}) => in_limits(radius, start, end))
@@ -781,7 +793,7 @@ article {
     on:touchend={(e) => on_window_touchend(e, false)}
     on:touchcancel={(e) => on_window_touchend(e, true)}/>
 
-<DebugLayer active={debug_active} {layout} {pointer} {episode_arrangement} episodes={rhythms[active.rhythm_id].episodes}/>
+<DebugLayer active={debug_active} {layout} {pointer} episode_arrangement={pointer_episode_arrangement || episode_arrangement} episodes={rhythms[active.rhythm_id].episodes}/>
 
 {#if layout}
 <main>
@@ -790,7 +802,7 @@ article {
     {/each}
     <article>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
-        <Circle {instrument_order} {layout} {episode_arrangement}
+        <Circle {instrument_order} {layout} episode_arrangement={pointer_episode_arrangement || episode_arrangement}
             episodes={rhythms[active.rhythm_id].episodes}
             active_episode_id={active.episode_id}
             period={rhythms[active.rhythm_id].period}

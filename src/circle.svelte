@@ -1,5 +1,7 @@
 <script>
     import Dot from "./dot.svelte"
+    import DotRect from "./dot_rect.svelte"
+    import DotNext from "./dot_next.svelte"
     import ProgressCircle from "./progress_circle.svelte"
     import PlayButton from "./play_button.svelte"
 
@@ -35,6 +37,7 @@
 
     let parts
     let circular_parts
+    let pulses
 
     const pick = (obj, ...keys) => Object.fromEntries(
         keys.filter(key => key in obj).map(key => [key, obj[key]]))
@@ -51,43 +54,55 @@
 
 
 
-    function phrases2parts(phrases, episode_id, episode_start, phrase_arrangement, borrowed_phrases, instrument_order, pointer, playing_attacks, circular, playing, episode_active, phase, active_width) {
-        const parts = phrases.reduce((res, phrase, phrase_id) => {
-                const phrase_playing = playing && (episode_active || borrowed_phrases.includes(phrase))
-                return res.concat(phrase.parts.map((pulses, part_id, {length: part_count}) => {
+    function phrases2parts(phrase_arrangement, pointer, playing_attacks, circular, playing, active_episode_id, phase, active_width) {
+        const parts = phrase_arrangement.flatMap(({phrase, episode_id, interval: {start}}, phrase_id) => {
+                const phrase_playing = playing && episode_id == active_episode_id
+                const parts = phrase?.parts || []
+                return parts.map((pulses, part_id, {length: part_count}) => {
                     const pointer_on_part = pointer.last?.episode_id == episode_id && pointer.last?.phrase_id == phrase_id && pointer.last?.part_id == part_id ? pointer : {}
                     const combined_pulses = pulses.concat(get_attacks_by_part(playing_attacks, episode_id, phrase_id, part_id))
-                    const attacks = attack_info(circular, phrase_playing, combined_pulses, phrase.parts.length * period, phase, pointer_on_part)
-                    const radius = episode_start + phrase_arrangement[phrase_id].start + active_width * (part_id + (circular?0:0.5))
-                    const part_playing = phrase_playing && in_limits(phase % (phrase.parts.length * period), part_id * period, (part_id + 1) * period)
+                    const attacks = attack_info(circular, phrase_playing, combined_pulses, part_count * period, phase, pointer_on_part)
+                    const radius = (start + active_width * (part_id + (circular?0:0.5))) / (circular ? 2.9 : 1) + (circular ? 0.14 : 0)
+                    const part_playing = phrase_playing && in_limits(phase % (part_count * period), part_id * period, (part_id + 1) * period)
                     return { episode_id, phrase, phrase_id, part_id, radius, pulses, attacks, pointer: pointer_on_part, playing: part_playing}
-                }).reverse())
-            },
-            []).sort((a, b) => instrument_order.get(b.phrase.instrument) - instrument_order.get(a.phrase.instrument))
+                }).reverse()
+            })
         // console.log({episode_id, phrases: phrases.length, parts: parts.length})
         return parts
     }
 
-    function setup_parts(instrument_order, pointer, playing_attacks, active_episode, episode_arrangement, phase) {
+    function setup_parts(pointer, playing_attacks, active_episode_id, episode_arrangement, phase) {
         if (episode_arrangement == undefined) return
 
         const active_width = 0.065
         const active_width_circular = 0.12
-        const active_borrowed_phrases = playing ? episode_arrangement.episodes.get(active_episode).borrowed_phrases : []
-        const header_parts = phrases2parts(episode_arrangement.header.phrases, undefined, 0, episode_arrangement.header.phrase_arrangement, active_borrowed_phrases, instrument_order, pointer, playing_attacks, false, playing, false, phase, active_width)
-        const header_end = episode_arrangement.header.phrases.length ? episode_arrangement.header.phrase_arrangement.at(-1).end + 0.05: 0
+        const header_phrase_arrangment = episode_arrangement.header.phrase_arrangement.map(
+            arrangment => ({...arrangment,
+                phrase: arrangment.borrowed_phrase,
+                interval: arrangment.borrowed_interval}))
+        const header_parts = phrases2parts(header_phrase_arrangment, pointer, playing_attacks, false, playing, active_episode_id, phase, active_width)
 
         parts = header_parts.concat(Array.from(episode_arrangement.episodes).flatMap(
-            ([episode, {episode_id, start: episode_start, phrase_arrangement}]) => {
-                return phrases2parts(episode.phrases, episode_id, header_end + episode_start, phrase_arrangement, active_borrowed_phrases, instrument_order, pointer, playing_attacks, false, playing, episode_id == active_episode_id, phase, active_width)
+            ([episode, {phrase_arrangement}]) => {
+                const episode_phrase_arrangment = episode_arrangement.header.phrase_arrangement.map(
+                    arrangment => ({
+                        ...arrangment,
+                        phrase: arrangment.own_phrase,
+                        interval: arrangment.own_interval}))
+                return phrases2parts(episode_phrase_arrangment, pointer, playing_attacks, false, playing, active_episode_id, phase, active_width)
             }))
 
-        circular_parts = phrases2parts(episode_arrangement.circle.phrases, episode_arrangement.circle.episode_id, 0, episode_arrangement.circle.phrase_arrangement, [], instrument_order, pointer, playing_attacks, true, playing, true, phase, active_width_circular)
+        const circular_phrase_arrangment = episode_arrangement.circle.phrase_arrangement.map(
+            arrangment => ({
+                ...arrangment,
+                phrase: arrangment.own_phrase || arrangment.borrowed_phrase,
+                interval: arrangment.circular_interval}))
+        circular_parts = phrases2parts(circular_phrase_arrangment, pointer, playing_attacks, true, playing, active_episode_id, phase, active_width_circular)
         // console.log(episode_arrangement)
         // console.log(circular_parts)
     }
 
-    $: setup_parts(instrument_order, pointer, playing_attacks, episodes[active_episode_id], episode_arrangement, phase)
+    // $: setup_parts(pointer, playing_attacks, active_episode_id, episode_arrangement, phase)
 
     function color(phrase, period, phase) {
         const beat_period = {9: 3, 12: 3, 16: 4, 18: 3}[period] || 4
@@ -157,10 +172,7 @@
     const background_width = (circular) => circular ? 0.02 : 0.06
 
     function pos2radius(circular, pos) {
-        const min_radius = circular ? 0.14 : 0.0
-        const max_radius = circular ? 0.5 : 1.0
-        const radius = pos * (max_radius - min_radius) + min_radius
-        return radius
+        return pos
     }
 
     function common_props(circular, part) {
@@ -199,10 +211,49 @@
         selected_episodes = selected_episodes.add(episode_id)
     }
 
+    function setup_pulses(circular, episode_arrangement) {
+        const {pulse_delta: delta, beat_period} = episode_arrangement
+        const width = background_width(circular)
+
+        function phrases2pulses(phrase_arrangement, part_space, episode_start = 0) {
+            return phrase_arrangement.flatMap(({phrase, phrase_interval}) => {
+                if (!phrase) return []
+                const {parts, instrument} = phrase
+
+                return parts.flatMap((pulses, part_id) => {
+                    const radius = episode_start + phrase_interval.start + part_space * (part_id + (circular ? 0 : 0.5))
+
+                    return pulses.map(({phase}) => {
+                        const color = Math.floor(phase/beat_period) % 2 != 0 ? alternate(instrument.color) : instrument.color
+                        const transform =
+                            circular ?
+                            "rotate(".concat(360 * phase * delta, ")") :
+                            "translate(".concat((phase + (circular ? 0 : 0.5)) * delta, ",", radius, ")")
+                        return {transform, width, delta, color, radius}
+                    })
+                })
+            })
+        }
+
+        if (circular) {
+            const {circular_part_space: part_space, circle: {phrase_arrangement}} = episode_arrangement
+            return phrases2pulses(phrase_arrangement.map(({combined_phrase: phrase, circular_interval: phrase_interval}) => ({phrase, phrase_interval})), part_space)
+        }
+
+        const {episodes, part_space, header} = episode_arrangement
+        return Array.from(episodes.values()).flatMap(({start: episode_start, phrase_arrangement}) =>
+            phrases2pulses(phrase_arrangement.map(({own_phrase: phrase, own_interval: phrase_interval}) => ({phrase, phrase_interval})), part_space, episode_start + header.space)
+        )
+    }
+
+
+    let attacks = []
+    // $: attacks = setup_attacks(episode_arrangement)
 
 </script>
 
-{#if parts && layout}
+{#if episode_arrangement && layout}
+    {@const {part_transform, phase_transform, part_space, pulse_delta, available_space} = episode_arrangement}
     {@const {view} = episode_arrangement}
 
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {layout.width} {layout.height}" width={layout.width} height={layout.height}>
@@ -216,41 +267,49 @@
 
     <g transform={circular ? `translate(${layout.circle.center}, ${layout.circle.middle}) scale(${layout.circle.size}) rotate(-90)` : `translate(${layout.parts.left}, ${layout.parts.top}) scale(${layout.parts.width})`}>
         {#if !circular}
-        <g>
-        {#each episodes as episode, episode_id}
-        {#if in_limits(episode_id, view.start_id || 0, view.end_id || episodes.length)}
-        <g transform="translate(-0.13, {pos2radius(false, episode_arrangement.episodes.get(episode).start +(episode_arrangement.header.phrases.length ? episode_arrangement.header.phrase_arrangement.at(-1).end + 0.05: 0))})"
-            on:press={() => on_episode_press(episode_id)}
-            on:longpress={() => on_episode_longpress(episode_id)}
-            use:longpress>
-            <rect x=-0.01 width=0.14
-                height={pos2radius(false, episode_arrangement.episodes.get(episode).end) - pos2radius(false, episode_arrangement.episodes.get(episode).start)}
-                fill={episode_id == active_episode_id ? "var(--theme-bg-less)" : "none"}
-                pointer-events="fill"/>
-            <g transform="translate(0, {(pos2radius(false, episode_arrangement.episodes.get(episode).end) - pos2radius(false, episode_arrangement.episodes.get(episode).start))/2 - 0.11/2})">
-            <ProgressCircle
-                    progress={playing && episode_id == active_episode_id ? phase / (period * episode.longest_phrase) : undefined}
-                    rounds={episode.repeat}
-                    width=0.11 height=0.11
-                    text={episode_id + 1} />
-            </g>
+        <g transform="translate(-0.13, {episode_arrangement.header.space})">
+            {#each episodes as episode, episode_id}
+                {#if in_limits(episode_id, view.start_id || 0, view.end_id || episodes.length)}
+                <g transform="translate(0, {episode_arrangement.episodes.get(episode).start})"
+                    on:press={() => on_episode_press(episode_id)}
+                    on:longpress={() => on_episode_longpress(episode_id)}
+                    use:longpress>
+                    <rect x=-0.01 width=0.14
+                        height={pos2radius(false, episode_arrangement.episodes.get(episode).end) - pos2radius(false, episode_arrangement.episodes.get(episode).start)}
+                        fill={episode_id == active_episode_id ? "var(--theme-bg-less)" : "none"}
+                        pointer-events="fill"/>
+                    <g transform="translate(0, {(pos2radius(false, episode_arrangement.episodes.get(episode).end) - pos2radius(false, episode_arrangement.episodes.get(episode).start))/2 - 0.11/2})">
+                    <ProgressCircle
+                            progress={playing && episode_id == active_episode_id ? phase / (period * episode.longest_phrase) : undefined}
+                            rounds={episode.repeat}
+                            width=0.11 height=0.11
+                            text={episode_id + 1} />
+                    </g>
+                </g>
+                {/if}
+            {/each}
         </g>
         {/if}
-        {/each}
-        </g>
-        {/if}
-    {#each (circular ? circular_parts : parts) as part}
-        {#each part.pulses as pulse, pulse_id}
-        <Dot back={true}  {...common_props(circular, part)}
-        width={background_width(circular)}
-        gap={circular?0.01:0.0035}
-        phase={(pulse.phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={1 / period}
-        color={color(part.phrase, period, pulse.phase)}
-        on:swipe={(e) => dispatch("swipe", { episode_id: part.episode_id, phrase_id: part.phrase_id, part_id: part.part_id, pulse_id, ...e.detail })}
-        on:swipeend on:finish_touch/>
-        {/each}
+
+    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].pulse_arrangement as {transform, width, delta, color, radius}}
+        <g {transform}><DotRect {circular} {width} {delta} {radius} fill={color}/></g>
     {/each}
-    {#each (circular ? circular_parts : parts).slice().sort((a, b) => (a.pointer.phase == undefined ? 0 : 1) - (b.pointer.phase == undefined ? 0 : 1)) as part}
+
+    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].parts as {transform, is_playing, width, delta, radius, color}}
+        {#if is_playing(active_episode_id, phase)}
+        <g transform={transform(phase)}><DotRect {circular} {width} {delta} {radius} fill={color}/></g>
+        {/if}
+    {/each}
+
+    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].next_arrangement as {transform, x1, x2, y1, y2}}
+        <g {transform}><DotNext {circular} {x1} {x2} {y1} {y2}/></g>
+    {/each}
+
+    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].attack_arrangement as {transform, radius, size, sym, pulse_color, outline_color, flash_color}}
+        <g {transform}><Dot {circular} {radius} {size} {sym} {pulse_color} {outline_color} {flash_color}/></g>
+    {/each}
+
+    <!-- {#each (circular ? circular_parts : parts).slice().sort((a, b) => (a.pointer.phase == undefined ? 0 : 1) - (b.pointer.phase == undefined ? 0 : 1)) as part}
         {#if !circular && part.pointer.phase != undefined}
         {#each part.attacks as attack}
         {#if in_limits(part.pointer.phase - attack.phase, -0.5, 0.5)}
@@ -300,24 +359,24 @@
             />
         {/each}
 
-        {#if !circular}
-        <g transform="translate(-0.13)">
-            {#if view.start_id > 0}
-            <g use:longpress on:press={() => dispatch("scroll_to", view.start_id - 1)}>
-            <rect pointer-events="fill" opacity=0.2 x=0 y=0 width=0.11 height=0.07 fill=none/>
-            <polyline points="0.01,0.04 0.055,0.015 0.1,0.04" stroke="var(--theme-fg)" stroke-width={0.015} fill="none"/>
-            </g>
-            {/if}
-
-            {#if view.end_id < episodes.length}
-            <g transform="translate(0, {episode_arrangement.available_space})" use:longpress on:press={() => dispatch("scroll_to", view.end_id)}>
-            <rect pointer-events="fill" opacity=0.2 x=0 y=-0.07 width=0.11 height=0.07 fill=none/>
-            <polyline points="0.01,-0.04 0.055,-0.015 0.1,-0.04" stroke="var(--theme-fg)" stroke-width={0.015} fill="none"/>
-            </g>
-            {/if}
+    {/each} -->
+    {#if !circular}
+    <g transform="translate(-0.13)">
+        {#if view.start_id > 0}
+        <g use:longpress on:press={() => dispatch("scroll_to", view.start_id - 1)}>
+        <rect pointer-events="fill" opacity=0.2 x=0 y=0 width=0.11 height=0.07 fill=none/>
+        <polyline points="0.01,0.04 0.055,0.015 0.1,0.04" stroke="var(--theme-fg)" stroke-width={0.015} fill="none"/>
         </g>
         {/if}
-    {/each}
+
+        {#if view.end_id < episodes.length}
+        <g transform="translate(0, {episode_arrangement.available_space})" use:longpress on:press={() => dispatch("scroll_to", view.end_id)}>
+        <rect pointer-events="fill" opacity=0.2 x=0 y=-0.07 width=0.11 height=0.07 fill=none/>
+        <polyline points="0.01,-0.04 0.055,-0.015 0.1,-0.04" stroke="var(--theme-fg)" stroke-width={0.015} fill="none"/>
+        </g>
+        {/if}
+    </g>
+    {/if}
 
 </g>
 

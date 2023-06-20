@@ -10,5 +10,5 @@ export default class Attack {
 
     static from_pulse(pulse) {
         return new Attack(pulse.phase, pulse.sym)
-    } 
+    }
 }
