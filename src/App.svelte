@@ -17,7 +17,7 @@
     import { in_limits } from "./utils.js"
     import sounds from "./sounds.js"
     import * as symbols from "./symbols"
-    import {arrange_episodes, arrange_pointer_episodes} from "./arrange.js"
+    import {arrange_episodes} from "./arrange.js"
 
     import Circle from "./circle.svelte"
     import EpisodeBar from "./episode_bar.svelte"
@@ -494,11 +494,11 @@
         episode_arrangement = arrange_episodes(rhythms[active.rhythm_id].period, rhythms[active.rhythm_id].episodes, instrument_order, layout.parts.height / layout.parts.width, active.episode_id, old_view, roi)
     }
 
-    let pointer_episode_arrangement = undefined
-    $: if(episode_arrangement && pointer.start?.section == "right") {
-        console.log(Array.from(pointer_episode_arrangement?.episodes?.values() ?? [])?.at(1)?.phrase_arrangement, Array.from(episode_arrangement.episodes.values()).at(1).phrase_arrangement)
-        pointer_episode_arrangement = arrange_pointer_episodes(pointer_episode_arrangement ?? episode_arrangement, pointer.last)
-    }
+    // let pointer_episode_arrangement = undefined
+    // $: if(episode_arrangement && pointer.start?.section == "right") {
+    //     console.log(Array.from(pointer_episode_arrangement?.episodes?.values() ?? [])?.at(1)?.phrase_arrangement, Array.from(episode_arrangement.episodes.values()).at(1).phrase_arrangement)
+    //     pointer_episode_arrangement = arrange_pointer_episodes(pointer_episode_arrangement ?? episode_arrangement, pointer.last)
+    // }
 
 
     function flush_started(reset_phase = true) {
@@ -793,7 +793,7 @@ article {
     on:touchend={(e) => on_window_touchend(e, false)}
     on:touchcancel={(e) => on_window_touchend(e, true)}/>
 
-<DebugLayer active={debug_active} {layout} {pointer} episode_arrangement={pointer_episode_arrangement || episode_arrangement} episodes={rhythms[active.rhythm_id].episodes}/>
+<DebugLayer active={debug_active} {layout} {pointer} {episode_arrangement} episodes={rhythms[active.rhythm_id].episodes}/>
 
 {#if layout}
 <main>
@@ -802,7 +802,7 @@ article {
     {/each}
     <article>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
-        <Circle {instrument_order} {layout} episode_arrangement={pointer_episode_arrangement || episode_arrangement}
+        <Circle {instrument_order} {layout} {episode_arrangement}
             episodes={rhythms[active.rhythm_id].episodes}
             active_episode_id={active.episode_id}
             period={rhythms[active.rhythm_id].period}
