@@ -295,11 +295,13 @@
         <g {transform}><DotRect {circular} {width} {delta} {radius} fill={color}/></g>
     {/each}
 
+    {#if playing}
     {#each episode_arrangement.part_arrangement[circular ? 1 : 0].parts as {transform, is_playing, width, delta, radius, color}}
         {#if is_playing(active_episode_id, phase)}
         <g transform={transform(phase)}><DotRect {circular} {width} {delta} {radius} fill={color}/></g>
         {/if}
     {/each}
+    {/if}
 
     {#each episode_arrangement.part_arrangement[circular ? 1 : 0].next_arrangement as {transform, x1, x2, y1, y2}}
         <g {transform}><DotNext {circular} {x1} {x2} {y1} {y2}/></g>

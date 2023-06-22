@@ -325,12 +325,17 @@
     }
 
     function load_active() {
-        const loaded = JSON.parse(localStorage.getItem("active") || '{"rhythm_name": "koreduga", "episode_id": 0}')
-        let index = rhythms.findIndex(rhythm => rhythm.name == loaded.rhythm_name)
-        if (index >= 0) {
-            active.rhythm_id = index
-            active.episode_id = loaded.episode_id
-            flush_started(false)
+        const from_url = {rhythm_name: document.location.pathname.substr(1)}
+        const loaded = JSON.parse(localStorage.getItem("active"))
+        const fallback = {rhythm_name: "koreduga"}
+        for (const variant of [from_url, loaded, fallback]) {
+            const index = rhythms.findIndex(rhythm => rhythm.name == variant.rhythm_name)
+            if (index >= 0) {
+                active.rhythm_id = index
+                active.episode_id = variant.episode_id ?? 0
+                flush_started(false)
+                break
+            }
         }
     }
 
@@ -419,7 +424,7 @@
                 attack.self_shift = undefined
             } else {
                 attack.power = 5 * Math.exp(-elapsed * 0.01)
-                attack.self_shift = 0.04 * Math.exp(-elapsed * 0.01) * Math.sin(elapsed * (0.006 - 0.005 * elapsed / max_elapsed) * Math.PI * 2)
+                attack.self_shift = 0.04 * Math.exp(-elapsed * 0.01) * Math.sin(elapsed * (0.008 - 0.001 * elapsed / max_elapsed) * Math.PI * 2)
             }
         }
         elapsed_atacks.forEach(attack => remove_attack(attack))
@@ -428,7 +433,7 @@
             playing_attacks = playing_attacks
         }
 
-        if (playing_attacks.size > 0) {
+        if (changed || playing_attacks.size > 0) {
             request_animation()
         }
 
@@ -437,13 +442,13 @@
 
     function add_attack(attack, playing_start, episode_id, phrase_id, part_id) {
         playing_attacks.set(attack, {playing_start, episode_id, phrase_id, part_id})
-        console.log(`episodes[${episode_id}] ${attack.phase} -> playing count=${playing_attacks.size}`)
+        // console.log(`episodes[${episode_id}] ${attack.phase} -> playing count=${playing_attacks.size}`)
         playing_attacks = playing_attacks
     }
 
     function remove_attack(attack) {
         playing_attacks.delete(attack)
-        console.log(`${attack.phase} -> removed count=${playing_attacks.size}`)
+        // console.log(`${attack.phase} -> removed count=${playing_attacks.size}`)
         playing_attacks = playing_attacks
     }
 
@@ -458,7 +463,7 @@
     }
 
 
-    $: process_pointer(pointer)
+    // $: process_pointer(pointer)
 
     function process_pointer(pointer) {
         const {episode_id, phrase_id, part_id} = pointer.last ?? {}
@@ -489,7 +494,7 @@
     $: roi = {start_id: active.episode_id, end_id: active.episode_id + (started.ts ? 2 : 1)}
 
     let episode_arrangement = {}
-    $: if (layout) {
+    $: if (layout && playing_attacks) {
         const old_view = episode_arrangement.view || {start_id: 0, end_id: rhythms[active.rhythm_id].episodes.length}
         episode_arrangement = arrange_episodes(rhythms[active.rhythm_id].period, rhythms[active.rhythm_id].episodes, instrument_order, layout.parts.height / layout.parts.width, active.episode_id, old_view, roi)
     }
@@ -519,9 +524,9 @@
             started.ts = 0
             flush_started()
         } else {
-            request_animation()
             started.ts = performance.now() - 10
         }
+        request_animation()
     }
 
     function activate_episode(episode_id) {
@@ -745,11 +750,6 @@ main {
     position: fixed;
     display: flex;
     justify-content: center;
-    font-size: 28px;
-    line-height: 28px;
-    font-family: "Scranji";
-    color: var(--theme-fg);
-    text-transform: uppercase;
 }
 
 main > * {
@@ -798,7 +798,7 @@ article {
 {#if layout}
 <main>
     {#each [layout.title] as {left, top, width, height}}
-    <h1 class="title" style="left: {left}px; top: {top}px; width: {width}px; height: {height}px">{rhythms[active.rhythm_id].name}</h1>
+    <h1 class="title rhythm_name" style="left: {left}px; top: {top}px; width: {width}px; height: {height}px">{rhythms[active.rhythm_id].name}</h1>
     {/each}
     <article>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>

@@ -6,7 +6,7 @@ export default class Pointer {
     }
 
     move_to(start, section, radius, episode_id, phrase_id, part_id, phase) {
-        console.log("move_to", start, section, radius, episode_id, phrase_id, part_id, phase)
+        // console.log("move_to", start, section, radius, episode_id, phrase_id, part_id, phase)
 
         const track = {section, radius, episode_id, phrase_id, part_id, phase}
 

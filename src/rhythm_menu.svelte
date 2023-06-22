@@ -55,9 +55,9 @@ button {
     border: 3px solid var(--theme-fg);
 }
 .list {
-    margin-top: 12px;
-    flex-direction: column-reverse;
-    overflow-x: scroll;
+    /* margin-top: 12px; */
+    /* flex-direction: column-reverse; */
+    /* overflow-x: scroll; */
 }
 
 .rename {
@@ -151,7 +151,7 @@ h1 + i, h1 + i:before {
 
 {#if open}
 <div class="col menu">
-    <header>
+    <!-- <header>
         <div class="row rename">
             <h1><input type=text value={rhythms[active].name}
                 on:input={on_name_edit}></h1>
@@ -185,16 +185,16 @@ h1 + i, h1 + i:before {
                 </div>
             </button>
         </div>
-    </header>
+    </header> -->
     <div class="col list">
         {#each rhythms as rhythm, rhythm_id}
-        {#if rhythm_id != active }
-        <div class="row" style="order:{rhythm.accessed - init_ts}"
+        <!-- {#if rhythm_id != active } -->
+        <div class="row  centered" style="order:{init_ts - rhythm.accessed}"
             on:click={() => { open = false; dispatch("switch", { rhythm_id })}}>
-            <h1>{rhythm.name}</h1>
-            {#if rhythm.blocked}<i class="icon-lock"></i>{/if}
+            <h1 class="rhythm_name">{rhythm.name}</h1>
+            <!-- {#if rhythm.blocked}<i class="icon-lock"></i>{/if} -->
         </div>
-        {/if}
+        <!-- {/if} -->
         {/each}
     </div>
 </div>

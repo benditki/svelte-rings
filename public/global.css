@@ -189,3 +189,11 @@ button:disabled {
 .icon-plus:before { content: '\e805'; } /* '' */
 .icon-cross:before { content: '\e806'; } /* '' */
 .icon-cog:before { content: '\e807'; } /* '' */
+
+.rhythm_name {
+    font-size: 28px;
+    line-height: 28px;
+    font-family: "Scranji";
+    color: var(--theme-fg);
+    text-transform: uppercase;
+}
