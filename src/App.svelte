@@ -330,7 +330,7 @@
         const fallback = {rhythm_name: "koreduga"}
         for (const variant of [from_url, loaded, fallback]) {
             if (!variant) continue
-            const index = rhythms.findIndex(rhythm => rhythm.name == variant.rhythm_name)
+            const index = rhythms.findIndex(rhythm => rhythm.name.toUpperCase() == variant.rhythm_name.toUpperCase())
             if (index >= 0) {
                 active.rhythm_id = index
                 active.episode_id = variant.episode_id ?? 0
