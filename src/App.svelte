@@ -325,10 +325,11 @@
     }
 
     function load_active() {
-        const from_url = {rhythm_name: document.location.pathname.substr(1)}
+        const from_url = {rhythm_name: document.location.pathname.substring(1)}
         const loaded = JSON.parse(localStorage.getItem("active"))
         const fallback = {rhythm_name: "koreduga"}
         for (const variant of [from_url, loaded, fallback]) {
+            if (!variant) continue
             const index = rhythms.findIndex(rhythm => rhythm.name == variant.rhythm_name)
             if (index >= 0) {
                 active.rhythm_id = index
