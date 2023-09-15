@@ -8,7 +8,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" height="{size}px" width="{size}px" viewBox="-0.5 -0.5 1 1">
     <g class:playing={playing != 0}
         on:click={() => dispatch("toggle")}>
-        <circle r=0.3 fill="none" pointer-events="fill"/>
+        <circle r=1 fill="none" pointer-events="fill"/>
         <polygon class='triag' points="-0.17,-0.3 0.33,0 -0.17,0.3 "/>
         <polygon class='quad' points="-0.25,-0.25 0.25,-0.25 0.25,0.25 -0.25,0.25 "/>
     </g>
