@@ -6,6 +6,7 @@
     export let playing = false
 </script>
 <svg xmlns="http://www.w3.org/2000/svg" height="{size}px" width="{size}px" viewBox="-0.5 -0.5 1 1">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <g class:playing={playing != 0}
         on:click={() => dispatch("toggle")}>
         <circle r=1 fill="none" pointer-events="fill"/>

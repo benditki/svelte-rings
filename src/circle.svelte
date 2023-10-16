@@ -34,6 +34,7 @@
     export let phase
     export let pointer
     export let playing_attacks
+    export let editing
 
     let parts
     let circular_parts
@@ -265,7 +266,7 @@
 
     {#each [true, false] as circular}
 
-    <g transform={circular ? `translate(${layout.circle.center}, ${layout.circle.middle}) scale(${layout.circle.size}) rotate(-90)` : `translate(${layout.parts.left}, ${layout.parts.top}) scale(${layout.parts.width})`}>
+    <g transform={circular ? `translate(${layout.circle.middle}, ${layout.circle.top}) scale(${layout.circle.size})` : `translate(${layout.parts.left}, ${layout.parts.top}) scale(${layout.parts.width})`}>
         {#if !circular}
         <g transform="translate(-0.13, {episode_arrangement.header.space})">
             {#each episodes as episode, episode_id}
@@ -291,8 +292,8 @@
         </g>
         {/if}
 
-    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].pulse_arrangement as {transform, width, delta, color, radius}}
-        <g {transform}><DotRect {circular} {width} {delta} {radius} fill={color}/></g>
+    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].pulse_arrangement as {transform, width, delta, color, radius, framed}}
+        <g {transform}><DotRect {circular} {width} {delta} {radius} fill={color} stroke={framed(active_episode_id, editing)}/></g>
     {/each}
 
     {#if playing}

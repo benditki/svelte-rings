@@ -6,6 +6,7 @@ export default class Rhythm {
         this.period = period
         this.episodes = episodes
         this.accessed = accessed
+        this.stashed_episodes = []
     }
     clone(name) {
         return new Rhythm(name, this.period,

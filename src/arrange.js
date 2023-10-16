@@ -1,5 +1,5 @@
 import { in_limits } from "./utils.js"
-import { adjust, alternate } from "./colors.js"
+import { adjust, alternate, emphasize } from "./colors.js"
 import * as symbols from "./symbols"
 
 
@@ -77,28 +77,40 @@ function arrange_intervals_weighted_gaps(spaces, weighted_gaps, available_space,
 
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
 
-export function arrange_episodes_by_instruments(episodes, instrument_order) {
+function calc_normalized_gaps(positions, max_space = 1) {
+    const gaps = positions.concat([max_space]).map(
+        (order, index, entries) => (index == 0 ? order : order - entries[index - 1])
+    )
+    const total_gaps = sum(gaps)
+    return gaps.map(gap => gap / total_gaps)
+}
+
+export function arrange_episodes_by_instruments(episodes, instrument_order, circular_instrument_order) {
     const max_space = 1
     const active_instrument_space = 0.065
+    const circular_active_instrument_space = 0.31
     const max_free_space = 0.0
 
     const instruments = Array.from(instrument_order.keys())
     const positions = Array.from(instrument_order.values())
 
-    const gaps = positions.concat([max_space]).map(
-        (order, index, entries) => (index == 0 ? order : order - entries[index - 1])
-    )
-    const total_gaps = sum(gaps)
-    const normalized_gaps = gaps.map(gap => gap / total_gaps)
+    const normalized_gaps = calc_normalized_gaps(positions, max_space)
+    const circular_normalized_gaps = circular_instrument_order.map(
+        (instrument_order) => calc_normalized_gaps(Array.from(instrument_order.values()), max_space))
 
     const instrument_last_phrase = new Map()
     const by_instrument = episodes.map((episode, episode_id) => {
         const phrases = instruments.map(instrument => {
-            const own_phrase = episode.phrases.find(phrase => phrase.instrument === instrument)
+            const own_phrase_id = episode.phrases.findIndex(phrase => phrase.instrument === instrument)
+            const own_phrase = own_phrase_id != -1 ? episode.phrases[own_phrase_id] : undefined
             const borrowed_phrase = instrument_last_phrase.get(instrument)?.phrase
             const phrase_episode_id = own_phrase ? episode_id : instrument_last_phrase.get(instrument)?.episode_id
+            const borrowed_phrase_id = instrument_last_phrase.get(instrument)?.episode_id
 
-            return {own_phrase, borrowed_phrase, episode_id: phrase_episode_id, get combined_phrase() { return own_phrase || borrowed_phrase }}
+            return {own_phrase, borrowed_phrase, episode_id: phrase_episode_id, own_phrase_id, borrowed_phrase_id,
+                get combined_phrase() { return own_phrase || borrowed_phrase },
+                get combined_phrase_id() { return own_phrase ? own_phrase_id : borrowed_phrase_id }
+            }
         })
 
         episode.phrases.forEach((phrase, phrase_id) =>
@@ -116,7 +128,7 @@ export function arrange_episodes_by_instruments(episodes, instrument_order) {
         )
 
         const borrowed_spaces = phrases_by_instrument_order.map(
-            ({borrowed_phrase}) => borrowed_phrase ? borrowed_phrase.parts.length * active_instrument_space : 0
+            ({borrowed_phrase, own_phrase}) => !own_phrase && borrowed_phrase ? borrowed_phrase.parts.length * active_instrument_space : 0
         )
 
         const borrowed_phrase_intervals = arrange_intervals_weighted_gaps(/*spaces*/ borrowed_spaces,
@@ -131,30 +143,58 @@ export function arrange_episodes_by_instruments(episodes, instrument_order) {
             /*max_free_length*/ max_free_space,
             /*trim*/ true)
 
-        const combined_spaces = phrases_by_instrument_order.map(
-            ({combined_phrase}) => combined_phrase ? combined_phrase.parts.length * active_instrument_space : 0
+        const combined_phrases = circular_instrument_order.map(
+            (instrument_order) => Array.from(instrument_order.keys()).map(
+                (instrument) => phrases_by_instrument_order.find(
+                    ({combined_phrase}) => combined_phrase && combined_phrase.instrument == instrument
+                ) ?? {}
+            )
         )
 
-        const circular_intervals = arrange_intervals_weighted_gaps(/*spaces*/ combined_spaces,
-            /*weighted_gaps*/ normalized_gaps,
-            /*available_space*/ 1,
-            /*max_free_length*/ 1,
-            /*trim*/ false)
+        const combined_spaces = combined_phrases.map(
+            (phrases) => phrases.map(
+                ({combined_phrase}) => combined_phrase ? combined_phrase.parts.length * circular_active_instrument_space : 0)
+        )
+
+        const circular_intervals = combined_phrases.map(
+            (phrases, index) => arrange_intervals_weighted_gaps(/*spaces*/ combined_spaces[index],
+                /*weighted_gaps*/ circular_normalized_gaps[index],
+                /*available_space*/ 1,
+                /*max_free_length*/ 0,
+                /*trim*/ true)
+        )
 
         const phrase_arrangement = phrases_by_instrument_order.map(
             (phrase_info, instrument_id) => {
                 const own = {
-                    phrase: phrase_info.own_phrase, space: own_spaces[instrument_id], ...own_phrase_intervals[instrument_id],
+                    phrase: phrase_info.own_phrase,
+                    space: own_spaces[instrument_id],
+                    ...own_phrase_intervals[instrument_id],
+                    phrase_id: phrase_info.own_phrase_id,
                     episode_id: phrase_info.episode_id
                 }
 
                 const borrowed = {
-                    phrase: phrase_info.borrowed_phrase, space: borrowed_spaces[instrument_id], ...borrowed_phrase_intervals[instrument_id],
+                    phrase: phrase_info.borrowed_phrase,
+                    space: borrowed_spaces[instrument_id],
+                    ...borrowed_phrase_intervals[instrument_id],
+                    phrase_id: phrase_info.borrowed_phrase_id,
                     episode_id: phrase_info.episode_id
                 }
 
-                const combined = {
-                    phrase: phrase_info.combined_phrase, space: combined_spaces[instrument_id], ...adjust_circular(circular_intervals[instrument_id]),
+                const combined_index = phrase_info.combined_phrase == undefined ? -1 :
+                    combined_phrases.findIndex(
+                        (phrases) => phrases.find(({combined_phrase}) => combined_phrase == phrase_info.combined_phrase))
+
+                const combined_instrument_id = combined_index == -1 ? -1 :
+                    combined_phrases[combined_index].findIndex(({combined_phrase}) => combined_phrase == phrase_info.combined_phrase)
+
+                const combined = combined_index == -1 ? {} : {
+                    phrase: phrase_info.combined_phrase,
+                    space: combined_spaces[combined_index][combined_instrument_id],
+                    combined_index,
+                    ...circular_intervals[combined_index][combined_instrument_id],
+                    phrase_id: phrase_info.combined_phrase_id,
                     episode_id: phrase_info.episode_id
                 }
 
@@ -171,47 +211,73 @@ export function arrange_episodes_by_instruments(episodes, instrument_order) {
 }
 
 
+class Counter extends Map {
+    constructor(...args) {
+        super(...args)
+    }
 
-function adjust_circular(interval) {
-    const adjust = x => x / 2.9 + 0.14
-    return {...interval, start: adjust(interval.start), end: adjust(interval.end)}
+    get(elem) {
+        return this.has(elem) ? super.get(elem) : 0
+    }
+
+    add(elem) {
+        this.set(elem, this.get(elem) + 1);
+    }
+
+    remove(elem) {
+        var count = this.get(elem)
+        if (count > 1) {
+            this.set(elem, count - 1)
+        } else if (count==1) {
+            this.delete(elem)
+        } else if (count==0) {
+            throw `tried to remove non-existent element ${elem} of type ${typeof elem} from Counter`;
+        }
+    }
 }
 
-function arrange_parts(episode_arrangement) {
+function arrange_parts(episode_arrangement, editing) {
     const {pulse_delta: delta, beat_period} = episode_arrangement
     const {circular_part_space, circle: {phrase_arrangement: circle_phrase_arrangement}} = episode_arrangement
 
-    const pulse_transform = (circular, radius, phase) => circular ?
-        "rotate(".concat(360 * (phase * delta % 1), ") translate(", radius,")") :
+    const circular_radius = 0.12
+
+    const pulse_transform = (circular_start, phrase_start, part_id, circular, radius, phase) => circular ?
+        `translate(${phrase_start + circular_radius * part_id * 2.6 - 0.5 + circular_radius}, ${circular_start + circular_radius * 1.5}) rotate(${360 * (phase * delta % 1 - 0.25)}) translate(${radius})`:
         "translate(".concat((phase + 0.5) * delta % 1, ",", radius, ")")
 
     function phrases2pulses(phrase_arrangement, part_space, circular, episode_start = 0) {
-        const width = circular ? 0.02 : 0.06
+        const width = circular ? 0.06 : 0.06
         const part_arrangement = []
         const pulse_arrangement = []
         const attack_arrangement = []
         const next_arrangement = []
+        const episode_parts_count = new Counter()
         // const phase={(phase / period) % 1 + (circular? 0 : 0.5 / period)} delta={0.4 / period / (circular ? common_props(circular, part).radius * 6 : 2)
 
-        for(const {phrase, start: phrase_start, episode_id} of phrase_arrangement) {
+        for(const {phrase, phrase_id, start: phrase_start, episode_id, combined_index} of phrase_arrangement) {
             if (!phrase) continue
             const {parts, instrument} = phrase
 
+            const circular_start = combined_index == undefined ? 0 : combined_index * circular_radius * 2.8
+
             for(const [part_id, pulses] of parts.entries()) {
-                const radius = episode_start + phrase_start + part_space * (part_id + (circular ? 0 : 0.5))
+                const radius = circular ? circular_radius : episode_start + phrase_start + part_space * (part_id + 0.5)
+                const editable_part_id = episode_parts_count.get(episode_id)
+                episode_parts_count.add(episode_id)
 
                 {
-                    const transform = (phase) => pulse_transform(circular, radius, phase)
+                    const transform = (phase) => pulse_transform(circular_start, phrase_start, part_id, circular, radius * (circular ? 0.97 : 1), phase)
                     const part_count = parts.length
                     const is_playing = (active_episode_id, phase) => (circular || active_episode_id == episode_id) && in_limits(phase * delta % part_count - part_id, 0, 1)
-                    const player_delta = delta * 0.3 / (circular ? radius * 4 : 1)
-                    part_arrangement.push({transform, is_playing, width, delta: player_delta, radius, color: "var(--theme-accent)"})
+                    const player_delta = delta * 0.3 / (circular ? radius * 30 : 1)
+                    part_arrangement.push({episode_id, phrase, part_id, editable_part_id, transform, is_playing, width, delta: player_delta, radius: radius * 4, color: "var(--theme-accent)"})
                 }
 
-                for (const {phase} of pulses) {
+                for (const [pulse_id, {phase}] of pulses.entries()) {
                     const color = Math.floor(phase/beat_period) % 2 != 0 ? alternate(instrument.color) : instrument.color
-                    const transform = pulse_transform(circular, radius, phase)
-                    pulse_arrangement.push({transform, width, delta, color, radius})
+                    const transform = pulse_transform(circular_start, phrase_start, part_id, circular, radius * (circular ? 0.97 : 1), phase)
+                    pulse_arrangement.push({transform, width, delta, color, radius: radius, episode_id, editable_part_id, pulse_id})
                 }
 
                 const attacks = phrase.get_attacks(part_id)
@@ -230,7 +296,7 @@ function arrange_parts(episode_arrangement) {
                     const {phase, power, self_shift} = attack
                     const is_stub = attack.sym == symbols.STUB
                     const color = instrument.color
-                    const size = circular ? 0.038 : (is_stub ? 0.015 : 0.03) // + Math.abs(attack.lift) * 0.2
+                    const size = circular ? 0.028 : (is_stub ? 0.015 : 0.03) // + Math.abs(attack.lift) * 0.2
                     const sym = is_stub ? symbols.DOT : attack.sym
                     const pulse_color = is_stub ? alternate(color) : "var(--theme-fg)"
                     const outline_color = is_stub ? "var(--theme-fg)" : "var(--theme-bg-more)"
@@ -238,13 +304,13 @@ function arrange_parts(episode_arrangement) {
                     // const shift = (circular ? 1 : -1) * (self_shift ?? 0)
                     const shift = shifts[attack_id]
 
-                    const transform = pulse_transform(circular, radius + shift, phase)
+                    const transform = pulse_transform(circular_start, phrase_start, part_id, circular, radius + shift, phase)
                     attack_arrangement.push({transform, color, radius, attack, size, sym, pulse_color, outline_color, flash_color})
 
                     const next_attack_id = attack_id + 1 < attacks.length ? attack_id + 1 : 0
                     const next_attack = attacks[next_attack_id]
                     const next_distance = (next_attack.phase - phase) * delta % 1
-                    const threshold = 4.001 * delta
+                    const threshold = circular ? Infinity : 4.001 * delta
 
                     if (next_distance >= 0 && next_distance < threshold || next_distance < 0 && next_distance + 1 < threshold) {
                         const shift_delta = -shift + shifts[next_attack_id]
@@ -264,14 +330,21 @@ function arrange_parts(episode_arrangement) {
             }
         }
 
-        return {parts: part_arrangement, pulse_arrangement, attack_arrangement, next_arrangement}
+        const editable_pulse_arrangement = pulse_arrangement.map((arrangement) => {
+            const {episode_id, editable_part_id, pulse_id} = arrangement
+            const parts_count = episode_parts_count.get(episode_id)
+            const framed = (active_episode_id, editing) => active_episode_id == episode_id && editing && ((editing.part_id - editable_part_id) % parts_count) == 0 && editing.pulse_id == pulse_id ? "var(--theme-fg)" : "none"
+            return {...arrangement, framed}
+        })
+
+        return {parts: part_arrangement, pulse_arrangement: editable_pulse_arrangement, attack_arrangement, next_arrangement}
     }
 
     const circular_part_arrangement = phrases2pulses(circle_phrase_arrangement.map(({combined}) => combined), circular_part_space, true)
 
 
     const {episodes, part_space, header} = episode_arrangement
-    const header_arrangement = phrases2pulses(header.phrase_arrangement.map(({borrowed}) => borrowed), part_space, false)
+    const header_arrangement = phrases2pulses(header.phrase_arrangement.map(({own, borrowed}) => ({...borrowed, phrase: own.phrase ? undefined : borrowed.phrase})), part_space, false)
     const part_arrangement = Array.from(episodes.values()).reduce((res, {start: episode_start, phrase_arrangement}) => {
         const {parts, pulse_arrangement, attack_arrangement, next_arrangement} = phrases2pulses(phrase_arrangement.map(({own}) => own), part_space, false, episode_start + header.space)
 
@@ -286,19 +359,19 @@ function arrange_parts(episode_arrangement) {
     return [part_arrangement, circular_part_arrangement]
 }
 
-export function arrange_episodes(period, episodes, instrument_order, available_space, active_episode_id, old_view, roi) {
+export function arrange_episodes(period, episodes, instrument_order, circular_instrument_order, available_space, active_episode_id, old_view, roi, editing) {
     if (!available_space || isNaN(available_space)) return
 
     const active_instrument_space = 0.065
     const inter_episode_gap = 0.065
     const min_episode_space = 0.15
 
-    const {instruments, normalized_gaps, episode_inner_arrangement} = arrange_episodes_by_instruments(episodes, instrument_order)
+    const {instruments, normalized_gaps, episode_inner_arrangement} = arrange_episodes_by_instruments(episodes, instrument_order, circular_instrument_order)
 
     const {intervals: episode_intervals, view} = arrange_intervals_in_view(
             /*spaces*/ episode_inner_arrangement.map(({space}) => space),
             /*header_spaces*/ episode_inner_arrangement.map(({borrowed_space}) => borrowed_space ? borrowed_space + min_episode_space * 0.4 : 0),
-            /*footer_space*/ min_episode_space * 0.6,
+            /*footer_space*/ min_episode_space * 0.3,
             /*min_gap*/ inter_episode_gap,
             /*min_length*/ min_episode_space,
             /*available_space*/ available_space,
@@ -351,7 +424,7 @@ export function arrange_episodes(period, episodes, instrument_order, available_s
 
     const res2 = {
         ...res,
-        part_arrangement: arrange_parts(res)
+        part_arrangement: arrange_parts(res, editing)
     }
 
     return res2

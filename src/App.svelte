@@ -21,7 +21,7 @@
 
     import Circle from "./circle.svelte"
     import EpisodeBar from "./episode_bar.svelte"
-    import InstrumentBar from "./instrument_bar.svelte"
+    import Keypad from "./keypad.svelte"
     import BpmSelect from "./bpm_select.svelte"
     import PlayButton from "./play_button.svelte"
     import RhythmMenu from "./rhythm_menu.svelte"
@@ -60,6 +60,22 @@
         [ instruments.sungban,      0.92 ],
         [ instruments.dundunba,     1 ],
     ].sort((a, b) => a[1] - b[1]))
+
+    const circular_instrument_order = [
+        new Map([
+            [ instruments.clave,        0.5 ],
+            [ instruments.shekere,      0.5 ],
+        ].sort((a, b) => a[1] - b[1])),
+        new Map([
+            [ instruments.bass,         0.5 ],
+            [ instruments.kenkeni,      0.5 ],
+            [ instruments.sungban,      0.5 ],
+            [ instruments.dundunba,     0.5 ],
+        ].sort((a, b) => a[1] - b[1])),
+        new Map([
+            [ instruments.djembe,       0.5 ],
+        ].sort((a, b) => a[1] - b[1])),
+    ]
 
     let rhythms = [
         new Rhythm("tatata", 16, [
@@ -239,21 +255,25 @@
 
 
 
-    function clone_episode() {
-        if (rhythms[active.rhythm_id].blocked) return
+    function add_episode() {
+        // if (rhythms[active.rhythm_id].blocked) return
 
-        rhythms[active.rhythm_id].episodes.splice(active.episode_id + 1, 0,
-            rhythms[active.rhythm_id].episodes[active.episode_id].clone())
+        const stored_episode = rhythms[active.rhythm_id].stashed_episodes.pop()
+        const new_episode = stored_episode ?? new Episode()
+
+        rhythms[active.rhythm_id].episodes.splice(active.episode_id + 1, 0, new_episode)
         rhythms = rhythms
         activate_episode(active.episode_id + 1)
         selected_episodes = new Set()
     }
 
-    function del_episodes() {
-        if (rhythms[active.rhythm_id].blocked) return
+    function del_episode() {
+        // if (rhythms[active.rhythm_id].blocked) return
 
-        rhythms[active.rhythm_id].episodes = rhythms[active.rhythm_id].episodes.filter((episode, episode_id) => !selected_episodes.has(episode_id))
-        activate_episode(Math.min(active.rhythm_id, rhythms[active.rhythm_id].episodes.length - 1))
+        const removed_episodes = rhythms[active.rhythm_id].episodes.splice(active.episode_id, 1)
+        rhythms[active.rhythm_id].stashed_episodes.push(...removed_episodes)
+        rhythms = rhythms
+        activate_episode(Math.max(active.episode_id - 1, 0))
         selected_episodes = new Set()
     }
 
@@ -286,32 +306,47 @@
         }
     }
 
-    function add_instrument(instrument) {
-        if (rhythms[active.rhythm_id].blocked) return
+    function add_part(instrument, part_id) {
+        // if (rhythms[active.rhythm_id].blocked) return
 
         const episode = rhythms[active.rhythm_id].episodes[active.episode_id]
-        const {phrases, disabled_phrases} = episode
-        let instrument_phrases = disabled_phrases.filter(p => p.instrument == instrument)
-
-        if (instrument_phrases.length > 0) {
-            episode.disabled_phrases = disabled_phrases.filter(p => p.instrument != instrument)
-        } else {
-            instrument_phrases = [Phrase.fromPeriod(instrument, rhythms[active.rhythm_id].period)]
+        let phrase = episode.phrases.find((phrase) => phrase.instrument == instrument)
+        const stashed_phrase = episode.stashed_phrases.find((phrase) => phrase.instrument == instrument)
+        if (!phrase) {
+            phrase = new Phrase(instrument)
+            episode.phrases.push(phrase)
         }
 
-        episode.phrases = phrases.concat(instrument_phrases)
+        if (stashed_phrase && stashed_phrase.parts.length) {
+            phrase.add_part(rhythms[active.rhythm_id].period, stashed_phrase.parts.pop())
+        } else {
+            phrase.add_dup_or_empty(rhythms[active.rhythm_id].period)
+        }
+
         rhythms = rhythms
     }
 
-    function disable_instrument(instrument) {
-        if (rhythms[active.rhythm_id].blocked) return
+    function remove_part(instrument, part_id) {
+        // if (rhythms[active.rhythm_id].blocked) return
 
         const episode = rhythms[active.rhythm_id].episodes[active.episode_id]
-        const {phrases, disabled_phrases} = episode
-        const instrument_phrases = phrases.filter(p => p.instrument == instrument)
-        episode.phrases = phrases.filter(p => p.instrument != instrument)
-        episode.disabled_phrases = disabled_phrases.concat(instrument_phrases)
-        rhythms = rhythms
+        const phrase = episode.phrases.find((phrase) => phrase.instrument == instrument)
+        let stashed_phrase = episode.stashed_phrases.find((phrase) => phrase.instrument == instrument)
+        if (phrase) {
+            const removed_part = phrase.remove_part(part_id)
+            if (removed_part) {
+                if (!stashed_phrase) {
+                    stashed_phrase = new Phrase(instrument)
+                    episode.stashed_phrases.push(stashed_phrase)
+                }
+                stashed_phrase.parts.push(removed_part)
+
+                if (phrase.parts.length == 0) {
+                    episode.phrases.splice(episode.phrases.indexOf(phrase), 1)
+                }
+                rhythms = rhythms
+            }
+        }
     }
 
     let active = { rhythm_id: 0, episode_id: 0, pos: 0, phase: 0 }
@@ -329,7 +364,7 @@
         const loaded = JSON.parse(localStorage.getItem("active"))
         const fallback = {rhythm_name: "koreduga"}
         for (const variant of [from_url, loaded, fallback]) {
-            if (!variant) continue
+            if (!variant || !variant.rhythm_name) continue
             const index = rhythms.findIndex(rhythm => rhythm.name.toUpperCase() == variant.rhythm_name.toUpperCase())
             if (index >= 0) {
                 active.rhythm_id = index
@@ -497,7 +532,8 @@
     let episode_arrangement = {}
     $: if (layout && playing_attacks) {
         const old_view = episode_arrangement.view || {start_id: 0, end_id: rhythms[active.rhythm_id].episodes.length}
-        episode_arrangement = arrange_episodes(rhythms[active.rhythm_id].period, rhythms[active.rhythm_id].episodes, instrument_order, layout.parts.height / layout.parts.width, active.episode_id, old_view, roi)
+        const available_space = layout.parts.height / layout.parts.width
+        episode_arrangement = arrange_episodes(rhythms[active.rhythm_id].period, rhythms[active.rhythm_id].episodes, instrument_order, circular_instrument_order, available_space, active.episode_id, old_view, roi, editing)
     }
 
     // let pointer_episode_arrangement = undefined
@@ -643,10 +679,16 @@
             max_width = 1400,
             parts_to_list = 0.77,
             parts_top_bottom_margin = 4,
+            parts_bottom_margin = 4,
             button_height = 32,
             button_width = 48,
             button_gap = button_width/2,
-            button_icon_size_to_height = 0.8 } = settings
+            button_icon_size_to_height = 0.8,
+            keypad_width_to_button_width = 0.9,
+            keypad_height_to_button_height = 1.4,
+            keypad_left_margin = 3,
+            keypad_right_margin = 3,
+            keypad_bottom_margin = 2.5 } = settings
 
         const section = (top, bottom, left = 0, right = layout_width,
             height = bottom - top, middle = (top + bottom) / 2,
@@ -674,9 +716,9 @@
 
         const title = section(
             header.middle - title_height / 2, header.middle + title_height / 2,
-            header.center - title_height * 3, header.center + title_height * 3)
+            header.center - title_height * 4.2, header.center + title_height * 4.2)
 
-        const parts = section(list.top + parts_top_bottom_margin, list.bottom - parts_top_bottom_margin, list.center - list.width * parts_to_list / 2, list.center + list.width * parts_to_list / 2)
+        const title_edit = section(title.top, title.bottom, header.left + title_height * 0.5, header.left + title_height * 1.5)
 
         const buttons = section(0, layout_height, layout_width - button_width, layout_width)
         const menu_button = section(header.middle - button_height/2, header.middle + button_height/2, buttons.left, buttons.right)
@@ -687,9 +729,18 @@
         bpm_button.size = bpm_button.height * button_icon_size_to_height
         const bpm_range = section(buttons.top + button_gap, buttons.bottom - button_gap, buttons.left - button_width, buttons.left - 4)
 
+        const bpm_button_expend = section(bpm_button.bottom + button_gap, bpm_button.bottom + (button_gap + button_height) * 3, buttons.left - button_width * 0.2, buttons.right)
+        bpm_button_expend.size = bpm_button.size * 1.3
+        bpm_button_expend.radius = button_height * 0.7
+
+        const keypad = section(list.bottom - keypad_height_to_button_height * button_height - keypad_bottom_margin, list.bottom - keypad_bottom_margin, list.left + keypad_left_margin, list.right - keypad_right_margin)
+        // const keypad_closed = section(keypad.top, keypad.bottom, buttons.right - keypad_width_to_button_width * button_width, keypad.right)
+        const parts = section(list.top + parts_top_bottom_margin, keypad.top, list.center - list.width * parts_to_list / 2, list.center + list.width * parts_to_list / 2)
         const parts_transform = `translate(${parts.left}, ${parts.top}) scale(${parts.width})`
 
-        return {header, circle, list, title, width: layout_width, height: layout_height, vertical, parts, buttons, menu_button, play_button, bpm_button, bpm_range, parts_transform}
+        const rhythm_list = section(header.bottom, inner.bottom, inner.left, inner.right)
+
+        return {header, circle, list, title, title_edit, width: layout_width, height: layout_height, vertical, parts, buttons, menu_button, play_button, bpm_button, bpm_range, bpm_button_expend, keypad, parts_transform, rhythm_list}
     }
 
     function on_window_touch(e, start) {
@@ -733,6 +784,76 @@
 
         pointer.move_to(is_start, "outside")
         pointer = pointer
+    }
+
+    let editing = null
+    toggle_editing()
+
+    function toggle_editing() {
+        editing = editing ? null : { part_id: 0, pulse_id: 0 }
+    }
+
+    function move_editing(delta) {
+        if (!editing) return
+        console.log("move_editing", editing, delta)
+        if (delta.pulse_id != undefined) {
+            editing.pulse_id += delta.pulse_id
+            while (editing.pulse_id >= rhythms[active.rhythm_id].period) {
+                editing.pulse_id -= rhythms[active.rhythm_id].period
+            }
+            while (editing.pulse_id < 0) {
+                editing.pulse_id += rhythms[active.rhythm_id].period
+            }
+        }
+        if (delta.part_id != undefined) {
+            editing.part_id += delta.part_id
+        }
+    }
+
+    function on_keypad_touch({detail: {sym, arrow, more, instrument, episode}}) {
+        if (sym || sym === null) {
+            const part = edited_part(active, editing, episode_arrangement)
+            if (part) {
+                part.phrase.set_pulse(part.part_id, editing.pulse_id, sym)
+                rhythms = rhythms
+            }
+            move_editing({pulse_id: 1})
+
+        } else if (arrow) {
+            const arrow_to_delta = {
+                left: {pulse_id: -1}, right: {pulse_id: +1},
+                up: {part_id: -1}, down: {part_id: +1}}
+            const delta = arrow_to_delta[arrow]
+            if (delta) {
+                move_editing(delta)
+            }
+
+        } else if (instrument) {
+            if (instrument.to_add) {
+                add_part(instrument.to_add)
+                move_editing({part_id: +1})
+            }
+            if (instrument.to_remove) {
+                remove_part(instrument.to_remove)
+            }
+
+        } else if (episode) {
+            if (episode.add) {
+                add_episode()
+            } else if (episode.remove) {
+                del_episode()
+            }
+        }
+    }
+
+    function edited_part(active, editing, episode_arrangement) {
+        if (!editing || !episode_arrangement) return
+
+        const active_parts = episode_arrangement.part_arrangement[0].parts.filter(
+            ({episode_id}) => episode_id == active.episode_id)
+
+        return active_parts.find(
+            ({editable_part_id}) => (editable_part_id - editing.part_id) % active_parts.length == 0)
     }
 
 </script>
@@ -786,6 +907,10 @@ article {
     text-shadow: 0px 0px 4px cyan;
 }
 
+#keypad {
+    background-color: var(--theme-bg-alt);
+}
+
 </style>
 
 <svelte:window bind:innerWidth={layout_width} bind:innerHeight={layout_height}
@@ -798,9 +923,6 @@ article {
 
 {#if layout}
 <main>
-    {#each [layout.title] as {left, top, width, height}}
-    <h1 class="title rhythm_name" style="left: {left}px; top: {top}px; width: {width}px; height: {height}px">{rhythms[active.rhythm_id].name}</h1>
-    {/each}
     <article>
         <div><VolumeView value={current_volume} visible={volume_visible}/></div>
         <Circle {instrument_order} {layout} {episode_arrangement}
@@ -811,6 +933,7 @@ article {
             playing={started.ts != 0}
             {pointer}
             {playing_attacks}
+            {editing}
             bind:selected_episodes={selected_episodes}
             on:swipeend={on_cirle_swipeend}
             on:swipe={on_cirle_swipe}
@@ -827,6 +950,15 @@ article {
             on:toggle={() => toggle_play()}/>
     </div>
 
+    {#each [layout.keypad] as {left, top, width, height}}
+    <div id="keypad" style="position: fixed; width: {width}px; top: {top}px; left: {left}px; height: {height}px">
+        <Keypad {instrument_order}
+            instrument={edited_part(active, editing, episode_arrangement)?.phrase.instrument}
+            on:touch={on_keypad_touch}
+            />
+    </div>
+    {/each}
+
     <RhythmMenu {layout} {rhythms} active={active.rhythm_id}
         on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
         on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
@@ -835,16 +967,5 @@ article {
         on:clone={() => clone_rhythm()}/>
 </main>
 {/if}
-<!-- <div class="instrument_container">
-    <InstrumentBar
-    {instrument_order}
-    {instruments}
-    episode={rhythms[active.rhythm_id].episodes[active.episode_id]}
-    blocked={rhythms[active.rhythm_id].blocked}
-    on:switch={(e) => instrument_switch(e.detail.instrument)}
-    on:add={(e) => add_instrument(e.detail.instrument)}
-    on:disable={(e) => disable_instrument(e.detail.instrument)}
-    on:extra={(e) => phrase_extra(e.detail.phrase_id)}/>
-</div> -->
 
 <div class="version" class:debug={debug_active} on:click={() => { debug_active = !debug_active }}>v{VERSION}</div>

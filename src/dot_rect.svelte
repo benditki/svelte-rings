@@ -10,8 +10,8 @@
 
     let actual_gap
     let actual_stroke_width
-    $: actual_stroke_width = stroke_width ?? (stroke == undefined ? 0 : 0.005)
-    $: actual_gap = gap ?? (circular ? 0.01 : 0.0035)
+    $: actual_stroke_width = stroke_width ?? (stroke == undefined || stroke == "none" ? 0 : circular ? 0.005 : 0.0075)
+    $: actual_gap = gap ?? (circular ? 0.006 : 0.0035)
 
     function cont(radius, width, delta, gap) {
         if (radius == 0) {
@@ -36,7 +36,7 @@
 </script>
 
 {#if circular}
-<path {fill} {stroke} stroke-width={actual_stroke_width} d="{cont(radius, width, delta, actual_gap)}"/>
+<path {fill} {stroke} stroke-width={actual_stroke_width} d="{cont(radius, width + actual_stroke_width * 2, delta, actual_gap)}"/>
 {:else}
-<rect {fill} {stroke} stroke-width={actual_stroke_width} x={-delta/2 + actual_gap/2 + actual_stroke_width/2} y={- width/2 + actual_stroke_width/2} height={width - actual_stroke_width} width={delta - actual_gap - actual_stroke_width}/>
+<rect {fill} {stroke} stroke-width={actual_stroke_width} x={-delta/2 + actual_gap/2} y={- width/2 - actual_stroke_width/2} height={width + actual_stroke_width} width={delta - actual_gap}/>
 {/if}

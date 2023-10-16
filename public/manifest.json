@@ -1,0 +1,17 @@
+{
+    "short_name": "BeatRings",
+    "name": "BeatRings: West African Drumming Trainer",
+    "icons": [
+      {
+        "src": "/favicon.png",
+        "type": "image/png",
+        "sizes": "128x128"
+      }
+    ],
+    "start_url": "/",
+    "background_color": "#eed4a5",
+    "display": "fullscreen",
+    "scope": "/",
+    "theme_color": "#3b1b07",
+    "description": "West African Drumming Trainer"
+  }

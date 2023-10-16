@@ -7,6 +7,6 @@
 </script>
 
 <line {x1} {x2} {y1} {y2}
-        stroke="var(--theme-bg-more)" stroke-width={circular ? 0.015 : 0.01}/>
+        stroke="var(--theme-bg-more)" stroke-width={circular ? 0.01 : 0.01}/>
 <line {x1} {x2} {y1} {y2}
-        stroke="var(--theme-fg)" stroke-width={circular ? 0.008 : 0.005}/>
+        stroke="var(--theme-fg)" stroke-width={circular ? 0.006 : 0.005}/>

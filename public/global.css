@@ -1,6 +1,6 @@
 :root{
     --theme-bg-more: rgb(240, 229, 210);
-    --theme-bg: rgb(238, 212, 165);
+    --theme-bg: #eed4a5;
     --theme-bg-less: rgb(216, 194, 152);
     --theme-bg-alt: #d4ab5d;
     --theme-mid: #d19421;
@@ -30,7 +30,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-	color: #333;
+	color:  var(--theme-fg);
     background-color: var(--theme-bg);
 
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
@@ -90,6 +90,7 @@ button:disabled {
 .row {
     display: flex;
     flex-direction: row;
+    align-items: center;
 }
 
 .end {
@@ -117,6 +118,19 @@ button:disabled {
     justify-content: center;
     align-items: center;
 }
+
+.round_button {
+    background-color: var(--theme-bg-alt);
+    border: 1px solid var(--theme-bg);
+    border-right: none;
+    width: 100%;
+    height: 100%;
+    border-radius: 20%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 
 @font-face {font-family: "Good Times"; src: url("../font/GoodTimes.otf")}
 

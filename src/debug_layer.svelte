@@ -72,6 +72,7 @@
     const presented_sections = {
         header: { color: "red"},
         title: { color: "red"},
+        title_edit: { color: "red"},
         circle: { color: "blue"},
         list: { color: "magenta"},
         parts: { color: "magenta"},
