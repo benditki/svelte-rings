@@ -1,6 +1,6 @@
 <script>
 
-    const VERSION = "0.3.0"
+    const VERSION = "0.4.0"
 
     if (localStorage.getItem("version") != VERSION) {
         localStorage.clear()
@@ -31,6 +31,14 @@
 
     let playing_attacks = new Map()
 
+    let roll_types = {
+        flam: [-0.25, 0],
+        roll_2: [0, 0.5],
+        roll_3: [-0.33, 0.33],
+        roll_4a: [-0.25, 0.5],
+        roll_4b: [0.25],
+    }
+
     let instruments = {
         clave:    new Instrument('clave', "#1f77b4", [{    sound: sounds.beat },
             { letter: 'h', sym: symbols.TRIAG,             sound: sounds.beat_high }]),
@@ -50,6 +58,8 @@
             { letter: 'd', sym: symbols.TRAPEZ,            sound: sounds.dundunba },
             { letter: 'k', sym: symbols.TRIAG,             sound: sounds.kenkeni }]),
     }
+
+    Object.entries(instruments).forEach(({1: instrument}) => instrument.roll_types = roll_types)
 
     let instrument_order = new Map([
         [ instruments.clave,        0.0 ],
@@ -197,9 +207,12 @@
                 Phrase.fromPatterns(instruments.djembe,   ["st. b.s s.t tbs", "st. b.s s.t .ss"])
             ]),
         ]),
-
-
     ]
+
+    rhythms.find((rhythm) => rhythm.name == "koreduga")
+        .episodes[2].phrases[1]
+            .set_pulse_type(0, 0, "flam", [symbols.TRAPEZ, symbols.TRIAG])
+            .set_pulse_type(0, 9, "flam", [symbols.TRAPEZ, symbols.TRIAG])
 
     rhythms.forEach(rhythm => rhythm.blocked = true)
 
@@ -582,12 +595,17 @@
     }
 
     function create_rhythm(period) {
+        const beat_patterns = {
+            12: ["x..x..x..x.."],
+            16: ["x...x...x...x..."],
+            18: ["x..x..x..x..x..x.."],
+        }
         const name = gen_rhythm_name(`rhythm${period}-1`)
         rhythms = [...rhythms,
             new Rhythm(name, period, [
                 new Episode([
                     Phrase.fromPatterns(instruments.shekere,
-                        period == 16 ? ["x...x...x...x..."] : ["x..x..x..x.."])
+                        beat_patterns[period] || Array(period).fill("."))
                 ])
             ])
         ]
@@ -652,12 +670,6 @@
         }
     }
 
-    function phrase_extra(phrase_id) {
-        let parts = rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].parts
-        parts = parts.length > 1 ? [parts[0]] : [parts[0], parts[0].map(pulse =>
-            new Pulse(pulse.phase + rhythms[active.rhythm_id].period, pulse.sym))]
-        rhythms[active.rhythm_id].episodes[active.episode_id].phrases[phrase_id].parts = parts
-    }
 
     let debug_active = false
 
@@ -790,13 +802,27 @@
     toggle_editing()
 
     function toggle_editing() {
-        editing = editing ? null : { part_id: 0, pulse_id: 0 }
+        editing = editing ? null : { part_id: 0, pulse_id: 0, sym_id: 0 }
     }
 
     function move_editing(delta) {
         if (!editing) return
-        console.log("move_editing", editing, delta)
+        const [old_editing, init_delta] = [{...editing}, {...delta}]
+
         if (delta.pulse_id != undefined) {
+            editing.sym_id += delta.pulse_id
+            const part = edited_part(active, editing, episode_arrangement)
+            const sym_count = part ? part.phrase.parts[part.part_id][editing.pulse_id].syms.length : 1
+            if (editing.sym_id < 0) {
+                delta.pulse_id = -1
+            } else if (editing.sym_id >= sym_count) {
+                delta.pulse_id = +1
+            } else {
+                delta.pulse_id = 0
+            }
+        }
+        if (delta.pulse_id) {
+            editing.sym_id = 0
             editing.pulse_id += delta.pulse_id
             while (editing.pulse_id >= rhythms[active.rhythm_id].period) {
                 editing.pulse_id -= rhythms[active.rhythm_id].period
@@ -808,16 +834,24 @@
         if (delta.part_id != undefined) {
             editing.part_id += delta.part_id
         }
+        console.log("move_editing", old_editing, init_delta, editing)
     }
 
-    function on_keypad_touch({detail: {sym, arrow, more, instrument, episode}}) {
+    function on_keypad_touch({detail: {sym, arrow, pulse_type, instrument, episode}}) {
         if (sym || sym === null) {
             const part = edited_part(active, editing, episode_arrangement)
             if (part) {
-                part.phrase.set_pulse(part.part_id, editing.pulse_id, sym)
+                part.phrase.set_pulse(part.part_id, editing.pulse_id, editing.sym_id, sym || undefined)
                 rhythms = rhythms
             }
             move_editing({pulse_id: 1})
+
+        } else if (pulse_type || pulse_type === null) {
+            const part = edited_part(active, editing, episode_arrangement)
+            if (part) {
+                part.phrase.set_pulse_type(part.part_id, editing.pulse_id, pulse_type || undefined)
+                rhythms = rhythms
+            }
 
         } else if (arrow) {
             const arrow_to_delta = {
@@ -952,7 +986,7 @@ article {
 
     {#each [layout.keypad] as {left, top, width, height}}
     <div id="keypad" style="position: fixed; width: {width}px; top: {top}px; left: {left}px; height: {height}px">
-        <Keypad {instrument_order}
+        <Keypad {instrument_order} {roll_types}
             instrument={edited_part(active, editing, episode_arrangement)?.phrase.instrument}
             on:touch={on_keypad_touch}
             />
@@ -961,7 +995,7 @@ article {
 
     <RhythmMenu {layout} {rhythms} active={active.rhythm_id}
         on:switch={(e) => activate_rhythm(e.detail.rhythm_id)}
-        on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name}
+        on:rename={(e) => rhythms[active.rhythm_id].name = e.detail.name.toLowerCase()}
         on:new={(e) => create_rhythm(e.detail.period)}
         on:del={()=> del_rhythm()}
         on:clone={() => clone_rhythm()}/>

@@ -308,8 +308,9 @@
         <g {transform}><DotNext {circular} {x1} {x2} {y1} {y2}/></g>
     {/each}
 
-    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].attack_arrangement as {transform, radius, size, sym, pulse_color, outline_color, flash_color}}
-        <g {transform}><Dot {circular} {radius} {size} {sym} {pulse_color} {outline_color} {flash_color}/></g>
+    {#each episode_arrangement.part_arrangement[circular ? 1 : 0].attack_arrangement as {transform, radius, size, sym, pulse_color, outline_color, flash_color, framed}}
+        {@const framed_color = framed(active_episode_id, editing)}
+        <g {transform}><Dot {circular} {radius} {size} {sym} pulse_color={framed_color != "none" ? framed_color : pulse_color} {outline_color} {flash_color}/></g>
     {/each}
 
     <!-- {#each (circular ? circular_parts : parts).slice().sort((a, b) => (a.pointer.phase == undefined ? 0 : 1) - (b.pointer.phase == undefined ? 0 : 1)) as part}

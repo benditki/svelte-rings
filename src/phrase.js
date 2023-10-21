@@ -1,5 +1,6 @@
 import Pulse from "./pulse.js"
-import Attack from "./attack.js"
+import * as symbols from "./symbols"
+
 
 export default class Phrase {
     constructor(instrument, parts = [], volume = 1.0) {
@@ -17,15 +18,34 @@ export default class Phrase {
     }
 
     update_attacks() {
-        this.attacks = this.parts.map(pulses => pulses.filter(pulse => pulse.sym).map(pulse => Attack.from_pulse(pulse)))
+        this.attacks = this.parts.map((pulses) => pulses.flatMap((pulse, pulse_id) => pulse.make_attacks(pulse_id, this.instrument.roll_types)))
     }
 
-    set_pulse(part_id, pulse_id, new_sym) {
-        console.log("set_pulse", {part_id, pulse_id, sym: this.parts[part_id][pulse_id].sym, new_sym})
-        if (this.parts[part_id][pulse_id].sym == new_sym) return
+    set_pulse(part_id, pulse_id, sym_id, sym) {
+        console.log("set_pulse", {part_id, pulse_id, sym_id, sym: this.parts[part_id][pulse_id].syms[sym_id], new_sym: sym})
 
-        this.parts[part_id][pulse_id].sym = new_sym
+        this.parts[part_id][pulse_id].syms[sym_id] = sym
         this.update_attacks()
+        return this
+    }
+
+    set_pulse_type(part_id, pulse_id, type, syms) {
+        this.parts[part_id][pulse_id].type = type
+        if (!syms) {
+            syms = this.parts[part_id][pulse_id].syms
+        }
+        const new_length = this.instrument.roll_types[type]?.length ?? 1
+        if (new_length > syms.length) {
+            syms = syms.concat(Array(new_length - syms.length).fill(symbols.DOT))
+        } else {
+            syms = syms.slice(0, new_length)
+        }
+        if (type) {
+            syms = syms.map((sym) => sym ?? symbols.DOT)
+        }
+        this.parts[part_id][pulse_id].syms = syms
+        this.update_attacks()
+        return this
     }
 
     add_dup_or_empty(period, after_part_id) {
@@ -45,7 +65,7 @@ export default class Phrase {
             part_id = this.parts.length
         }
         this.parts.push(pulses.map(
-            (pulse) => new Pulse(pulse.phase % period + part_id * period, pulse.sym)))
+            (pulse) => new Pulse(pulse.phase % period + part_id * period, pulse.syms, pulse.type)))
         this.update_attacks()
     }
 
@@ -80,8 +100,9 @@ export default class Phrase {
         let phase = 0
         const parts = patterns.map(pattern =>
             pattern.split("")
-                .filter(s => /\S/.test(s))
-                .map(s => new Pulse(phase++, instrument.sym_map[s])))
+                .filter((s) => /\S/.test(s))
+                .map((s) => new Pulse(phase++, [instrument.sym_map[s]]))
+        )
         return new Phrase(instrument, parts, volume)
     }
 

@@ -296,16 +296,16 @@ function arrange_parts(episode_arrangement, editing) {
                     const {phase, power, self_shift} = attack
                     const is_stub = attack.sym == symbols.STUB
                     const color = instrument.color
-                    const size = circular ? 0.028 : (is_stub ? 0.015 : 0.03) // + Math.abs(attack.lift) * 0.2
-                    const sym = is_stub ? symbols.DOT : attack.sym
-                    const pulse_color = is_stub ? alternate(color) : "var(--theme-fg)"
-                    const outline_color = is_stub ? "var(--theme-fg)" : "var(--theme-bg-more)"
+                    const size = circular ? 0.028 : 0.03 // + Math.abs(attack.lift) * 0.2
+                    const sym = attack.sym ?? symbols.STUB
+                    const pulse_color = "var(--theme-fg)"
+                    const outline_color = is_stub ? "none" : "var(--theme-bg-more)"
                     const flash_color = power > 0.01 ? adjust(color, attack.power): undefined
                     // const shift = (circular ? 1 : -1) * (self_shift ?? 0)
                     const shift = shifts[attack_id]
 
                     const transform = pulse_transform(circular_start, phrase_start, part_id, circular, radius + shift, phase)
-                    attack_arrangement.push({transform, color, radius, attack, size, sym, pulse_color, outline_color, flash_color})
+                    attack_arrangement.push({transform, color, radius, attack, size, sym, pulse_color, outline_color, flash_color, episode_id, editable_part_id, pulse_id: attack.pulse_id, sym_id: attack.sym_id})
 
                     const next_attack_id = attack_id + 1 < attacks.length ? attack_id + 1 : 0
                     const next_attack = attacks[next_attack_id]
@@ -337,7 +337,16 @@ function arrange_parts(episode_arrangement, editing) {
             return {...arrangement, framed}
         })
 
-        return {parts: part_arrangement, pulse_arrangement: editable_pulse_arrangement, attack_arrangement, next_arrangement}
+        const editable_attack_arrangement = attack_arrangement.map((arrangement) => {
+            const {episode_id, editable_part_id, pulse_id, sym_id} = arrangement
+            const parts_count = episode_parts_count.get(episode_id)
+            const framed = (active_episode_id, editing) => {
+                return active_episode_id == episode_id && editing && ((editing.part_id - editable_part_id) % parts_count) == 0 && editing.pulse_id == pulse_id && editing.sym_id == sym_id ? "var(--theme-fg-alt)" : "none"
+            }
+            return {...arrangement, framed}
+        })
+
+        return {parts: part_arrangement, pulse_arrangement: editable_pulse_arrangement, attack_arrangement: editable_attack_arrangement, next_arrangement}
     }
 
     const circular_part_arrangement = phrases2pulses(circle_phrase_arrangement.map(({combined}) => combined), circular_part_space, true)

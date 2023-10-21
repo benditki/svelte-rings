@@ -10,4 +10,4 @@ export function alternate(color) {
 
 export function emphasize(color) {
     return chroma(color).darken().saturate()
-} 
+}
